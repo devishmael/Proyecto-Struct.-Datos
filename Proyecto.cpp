@@ -10,6 +10,11 @@ struct especie {
     double rapidez;
 };
 
+struct nodoEspecie {
+    especie dato;
+    nodoEspecie* siguiente;
+};
+
 struct personaje {
     string especie;
     string nombre;
@@ -35,6 +40,121 @@ struct mapa {
     int distancia;
     int adyacencias;
     int cantOrcos;
+};
+
+class listaEspecies {
+    private:
+        nodoEspecie* cabeza;
+
+    public:
+    listaEspecies(){
+        cabeza = nullptr;
+    }
+
+    void agregarEspecie() {
+        especie nuevaEspecie;
+        string tipo;
+        bool tipoInvalido;
+
+    //ingreso del nombre y vaidacion
+    while (true) {
+        cout<<"Ingrese el nombre de la especie: ";
+        cin>>nuevaEspecie.nombre;
+
+        //esto valida q el nombre tenga letras
+        bool valido = true;
+        for (char c : nuevaEspecie.nombre) {
+            if (!isalpha(c)) {
+                valido = false;
+                break;
+            }
+        }
+
+        if (valido) {
+            break; 
+        } else {
+            cout<<"Nombre no valido. Solo se permiten letras. Intenta de nuevo." << endl;
+        }
+    }
+
+    //esto es para validar el tipo de especie heroe o orco
+    while (true) {
+        cout<<"La especie es un Heroe o un Orco? (H/O): ";
+        cin>>tipo;
+
+        if (tipo=="h" || tipo=="H") {
+            cout<<"Ingrese la fortaleza del heroe: ";
+            while (!(cin>>nuevaEspecie.fortaleza)) {
+                cout<<"Numero invalido. Ingresa un numero para la fortaleza del heroe: ";
+                cin.clear();//limpia la entrada fea
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');//ignora el resto de la entrada fea
+            }
+            nuevaEspecie.ataque = 0;
+            break;
+        } else if (tipo=="o" || tipo=="O") {
+            cout<<"Ingrese el ataque del orco: ";
+            while (!(cin>>nuevaEspecie.ataque)) {
+                cout<<"Valor invalido. Ingresa un numero para el ataque: ";
+                cin.clear();
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            }
+            nuevaEspecie.fortaleza = 0;
+            break;
+        } else {
+            cout<<"Su tipo no es valido. Intenta de nuevo."<<endl;
+        }
+    }
+
+    //esto valida la rapidez y la salud
+    cout<<"Ingrese la salud de la especie: ";
+    while (!(cin>>nuevaEspecie.salud)) {
+        cout<<"Valor invalido. Ingresa un numero para la salud: ";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    }
+
+    cout<<"Ingrese la rapidez de la especie: ";
+    while (!(cin>>nuevaEspecie.rapidez)) {
+        cout<<"Valor invalido. Ingresa un numero para la rapidez: ";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    }
+
+    //finalmente el mensaje de exito
+    cout << "Especie '" << nuevaEspecie.nombre << "' agregada." << endl;
+
+        nodoEspecie* nuevoNodo = new nodoEspecie;
+        nuevoNodo->dato = nuevaEspecie;
+        nuevoNodo->siguiente = nullptr;
+
+        if (cabeza==nullptr) {
+            cabeza = nuevoNodo;
+        } else {
+            nodoEspecie* temp = cabeza;
+            while (temp->siguiente != nullptr) {
+                temp = temp->siguiente;
+            }
+            temp->siguiente = nuevoNodo;
+        }
+        cout<<"Especie '"<<nuevaEspecie.nombre<<"' agregada."<<endl;
+    }
+    
+    void mostrarEspecie() {
+        if (cabeza == nullptr) {
+            cout<<"No hay especies registradas."<<endl;
+            return;
+        }
+
+        nodoEspecie* temp = cabeza;
+        while (temp != nullptr) {
+            cout<<"Especie: "<<temp->dato.nombre<<endl;
+            cout<<"Forzaleza: "<<temp->dato.nombre<<endl;
+            cout<<"Ataque: "<<temp->dato.nombre<<endl;
+            cout<<"Salud: "<<temp->dato.nombre<<endl;
+            cout<<"Rapidez: "<<temp->dato.nombre<<endl<<endl;
+            temp = temp->siguiente;
+        }
+    }
 };
 
 int leerOpcion() {
@@ -117,7 +237,7 @@ void verSubMenuEliminar() {
     }
 } 
 
-void verSubMenuAgregar() {
+void verSubMenuAgregar(listaEspecies& lista) {
     int op;
     cout<<"\n-- Crear Elemento --"<<endl;
     cout<<"1. Personajes"<<endl;
@@ -131,7 +251,8 @@ void verSubMenuAgregar() {
 
     switch (op) {
         case 1:
-            cout<<"Ingresando a la creacion de personajes..."<<endl;
+            cout<<"Creando personaje..."<<endl;
+            lista.agregarEspecie();
             break;
         case 2:
             cout<<"Ingresando a la creacion de implementos..."<<endl;
@@ -196,6 +317,7 @@ void verSubMenuInformacion() {
 }
 
 int main() {
+    listaEspecies lista;
     int op = 0;
 
     do {
@@ -207,17 +329,17 @@ int main() {
         cout<<"3. Eliminar Elemento"<<endl;
         cout<<"4. Modificar Elemento"<<endl;
         cout<<"5. Visualizar Mapa"<<endl;
-        cout<<"6. Salir";
+        cout<<"6. Salir"<<endl;
         cout<<"______________________"<<endl;
-        cout<<"Selecciona una opcion: "<<endl;
+        cout<<"Selecciona una opcion: ";
         op=leerOpcion();;
 
         switch (op) {
             case 1:
-                verSubMenuInformacion();
+                verSubMenuInformacion();;
                 break;
             case 2:
-                verSubMenuAgregar();
+                verSubMenuAgregar(lista);
                 break;
             case 3:
                 verSubMenuEliminar();
@@ -233,7 +355,7 @@ int main() {
                 return 0;
         
         }
-    }while (op != 6);
+    }while (op!=6);
 
     return 0;
 }
