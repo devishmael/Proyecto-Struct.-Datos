@@ -2,6 +2,41 @@
 #include <limits>
 using namespace std;
 
+struct especie {
+    string nombre;
+    int fortaleza;
+    double ataque;
+    double salud;
+    double rapidez;
+};
+
+struct personaje {
+    string especie;
+    string nombre;
+};
+
+struct implemento {
+    string nombre;
+    string tipo;
+    int usos;
+    int fortaleza;
+    double valorAtk;
+    double valorDef;
+    double valorHeal;
+};
+
+struct magia {
+    string nombre;
+    string funcion;
+};
+
+struct mapa {
+    int sala;
+    int distancia;
+    int adyacencias;
+    int cantOrcos;
+};
+
 int leerOpcion() {
     int op;
     while (true) {
