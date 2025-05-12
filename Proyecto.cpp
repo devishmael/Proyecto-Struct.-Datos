@@ -8,6 +8,7 @@ struct especie {
     double ataque;
     double salud;
     double rapidez;
+    string tipo;
 };
 
 struct nodoEspecie {
@@ -23,6 +24,17 @@ struct personaje {
 struct nodoPersonaje {
     personaje dato;
     nodoPersonaje* siguiente;
+};
+
+struct equipo {
+    string nombre;
+    nodoPersonaje* personajes[4];
+    int numPjs; //Numero de personajes
+};
+
+struct nodoEquipo {
+    equipo dato;
+    nodoEquipo* siguiente;
 };
 
 struct implemento {
@@ -54,6 +66,35 @@ class listaEspecies {
     public:
         listaEspecies() {
         cabeza = nullptr;
+    }
+
+    void agregarEspecie(string nombre, string tipo, int fortaleza,int ataque, int salud, int rapidez) {
+        especie nuevaEspecie;
+        nuevaEspecie.nombre = nombre;
+        nuevaEspecie.salud = salud;
+        nuevaEspecie.rapidez = rapidez;
+
+        if (tipo == "Heroe") {
+            nuevaEspecie.fortaleza = fortaleza;
+            nuevaEspecie.ataque = 0; 
+        } else if (tipo == "Orco") {
+            nuevaEspecie.ataque = ataque;
+            nuevaEspecie.fortaleza = 0;
+        }
+
+        nodoEspecie* nuevoNodo = new nodoEspecie;
+        nuevoNodo->dato = nuevaEspecie;
+        nuevoNodo->siguiente = nullptr;
+
+        if (cabeza==nullptr) {
+            cabeza = nuevoNodo;
+        } else {
+            nodoEspecie* temp = cabeza;
+            while (temp->siguiente!=nullptr) {
+                temp = temp->siguiente;
+            }
+            temp->siguiente = nuevoNodo;
+        }
     }
 
     void agregarEspecie() {
@@ -95,6 +136,7 @@ class listaEspecies {
                     cin.ignore(numeric_limits<streamsize>::max(), '\n');//ignora el resto de la entrada fea
                 }
                 nuevaEspecie.ataque = 0;
+                nuevaEspecie.tipo = "Heroe";
                 break;
             } else if (tipo=="o" || tipo=="O") {
                 cout<<"Ingrese el ataque del orco: ";
@@ -104,6 +146,7 @@ class listaEspecies {
                     cin.ignore(numeric_limits<streamsize>::max(), '\n');
                 }
                 nuevaEspecie.fortaleza = 0;
+                nuevaEspecie.tipo = "Orco";
                 break;
             } else {
                 cout<<"Su tipo no es valido. Intenta de nuevo."<<endl;
@@ -158,6 +201,7 @@ class listaEspecies {
             cout<<"Salud: "<<temp->dato.salud<<endl;
             cout<<"Rapidez: "<<temp->dato.rapidez<<endl<<endl;
             temp = temp->siguiente;
+
         }
     }
 
@@ -174,94 +218,224 @@ class listaPersonajes {
             cabeza = nullptr;
         }
     
-    void agregarPersonaje(listaEspecies& lista) {
-        personaje nuevoPersonaje;
+        nodoPersonaje* obtenerPjInd(int ind) { //obtener indice del personaje
+            nodoPersonaje* temp = cabeza;
+            int cont = 1;
 
-        //ingreso del nombre y vaidacion
-        while (true) {
-            cout<<"Ingrese el nombre del personaje: ";
-            cin>>nuevoPersonaje.nombre;
+            while (temp != nullptr) {
+                if (cont == ind) {
+                    return temp;
+                }
+                temp = temp->siguiente;
+                cont++;
+            }
+            return nullptr;
+        }
 
-            //esto valida q el nombre tenga letras
-            bool valido = true;
-            for (char c : nuevoPersonaje.nombre) {
-                if (!isalpha(c)) {
-                    valido = false;
+        void agregarPersonaje(string especie, string nombre) {
+            personaje nuevoPersonaje;
+            nuevoPersonaje.nombre = nombre;
+            nuevoPersonaje.especie = especie;
+
+            nodoPersonaje* nuevoNodo = new nodoPersonaje;
+            nuevoNodo->dato = nuevoPersonaje;
+            nuevoNodo->siguiente = nullptr;
+
+            if (cabeza==nullptr) {
+                cabeza = nuevoNodo;
+            } else {
+                nodoPersonaje* temp = cabeza;
+                while (temp->siguiente!=nullptr) {
+                    temp = temp->siguiente;
+                }
+                temp->siguiente = nuevoNodo;
+            }
+        }
+        
+        void agregarPersonaje(listaEspecies& lista) {
+            personaje nuevoPersonaje;
+
+            //ingreso del nombre y vaidacion
+            while (true) {
+                cout<<"Ingrese el nombre del personaje: ";
+                cin>>nuevoPersonaje.nombre;
+
+                //esto valida q el nombre tenga letras
+                bool valido = true;
+                for (char c : nuevoPersonaje.nombre) {
+                    if (!isalpha(c)) {
+                        valido = false;
+                        break;
+                    }
+                }
+
+                if (valido) {
+                    break; 
+                } else {
+                    cout<<"Nombre no valido. Solo letras. Intenta de nuevo." << endl;
+                    }
+            }
+
+            cout<<"Selecciona una especie para el personaje"<<endl;
+            cout<<"_________________________________"<<endl;
+            lista.mostrarEspecie();
+
+            int op; 
+            while (true) {
+                cout << "Ingresa el numero de la especie: ";
+                cin >> op;
+
+                if (cin.fail()) {
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout << "Numero no valido. Por favor ingresa un numero."<<endl;
+                    continue;
+                }
+
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+                nodoEspecie* tempEsp = lista.obtenerCabeza();
+                int cont = 1;
+                while (tempEsp != nullptr && cont < op) {
+                    tempEsp = tempEsp->siguiente;
+                    cont++;
+                }
+
+                if (tempEsp == nullptr || tempEsp->dato.tipo != "Heroe") {
+                    cout << "No existe una especie con ese numero. Intenta de nuevo."<<endl;
+                    continue;
+                }
+
+                nuevoPersonaje.especie = tempEsp->dato.nombre;
+                break;
+            }
+
+            nodoPersonaje* nuevoNodo = new nodoPersonaje;
+            nuevoNodo->dato = nuevoPersonaje;
+            nuevoNodo->siguiente = nullptr;
+
+            if (cabeza==nullptr) {
+                cabeza = nuevoNodo;
+            } else {
+                nodoPersonaje* temp = cabeza;
+                while (temp->siguiente != nullptr) {
+                temp = temp->siguiente;
+                }
+                temp->siguiente = nuevoNodo;
+            }
+           cout<<"Personaje '"<<nuevoPersonaje.nombre<<"' agregado."<<endl;
+        }
+
+        void mostrarPersonaje() {
+            if (cabeza == nullptr) {
+                cout<<"No hay personajes registrados."<<endl;
+                return;
+                }
+
+            nodoPersonaje* temp = cabeza;
+            int cont = 1;
+            while (temp != nullptr) {
+                cout<<cont<<". Nombre: "<<temp->dato.nombre<<endl;
+                cout<<"Especie: "<<temp->dato.especie<<endl<<endl;
+                temp = temp->siguiente;
+                cont++;
+            }
+        }
+};
+
+class listaEquipos {
+    private:
+        nodoEquipo* cabeza;
+    public:
+        listaEquipos() {
+            cabeza = nullptr;
+        }
+
+        void agregarEquipo(listaPersonajes& listaPersonajes) {
+            equipo nuevoEquipo;
+            cout<<"Ingrese el nombre del equipo: ";
+            cin>>nuevoEquipo.nombre;
+            nuevoEquipo.numPjs = 0;
+
+            while(nuevoEquipo.numPjs<4) {
+                cout<<endl<<"Selecciona un personaje para el equipo (por numero)"<<endl;
+                listaPersonajes.mostrarPersonaje();
+
+                int op;
+                cout<<"Ingresa el numero del personaje (0 para terminar): ";
+                cin>>op;
+
+                if(cin.fail()) {
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout<<"Numero no valido, por favor ingresa un numero."<<endl;
+                    continue;
+                }
+                
+                if (op==0) {
                     break;
                 }
-            }
 
-            if (valido) {
-                break; 
-            } else {
-                cout<<"Nombre no valido. Solo letras. Intenta de nuevo." << endl;
+                nodoPersonaje* temp = listaPersonajes.obtenerPjInd(op);
+                if (temp==nullptr) {
+                    cout<<"Numero no valido, intenta denuevo."<<endl;
+                    continue;
                 }
-        }
 
-        cout<<"Selecciona una especie para el personaje"<<endl;
-        cout<<"_________________________________"<<endl;
-        lista.mostrarEspecie();
+                bool rep = false; //rep = repetido
+                for(int i = 0; i<nuevoEquipo.numPjs; i++) {
+                    if (nuevoEquipo.personajes[i]==temp) {
+                        rep = true;
+                        break;
+                    }
+                }
 
-        int ele; 
-        while (true) {
-            cout << "Ingresa el numero de la especie: ";
-            cin >> ele;
+                if (rep) {
+                    cout<<"Este personaje ya esta en el equipo."<<endl;
+                    continue;
+                }
 
-            if (cin.fail()) {
-                cin.clear();
-                cin.ignore(numeric_limits<streamsize>::max(), '\n');
-                cout << "Numero no valido. Por favor ingresa un numero."<<endl;
-                continue;
+                nuevoEquipo.personajes[nuevoEquipo.numPjs] = temp;
+                nuevoEquipo.numPjs += 1;
+                cout<<"Personaje '"<<temp->dato.nombre<<"' agregado al equipo"<<endl;
+            }
+            
+            if (nuevoEquipo.numPjs == 0) {
+                cout<<"No se agrego ningun personaje, no se creo el equipo."<<endl;
+                return;
             }
 
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-
-            nodoEspecie* tempEsp = lista.obtenerCabeza();
-            int contador = 1;
-            while (tempEsp != nullptr && contador < ele) {
-                tempEsp = tempEsp->siguiente;
-                contador++;
-            }
-
-            if (tempEsp == nullptr) {
-                cout << "No existe una especie con ese numero. Intenta de nuevo."<<endl;
-                continue;
-            }
-
-            nuevoPersonaje.especie = tempEsp->dato.nombre;
-            break;
-        }
-
-        nodoPersonaje* nuevoNodo = new nodoPersonaje;
-        nuevoNodo->dato = nuevoPersonaje;
-        nuevoNodo->siguiente = nullptr;
-
-        if (cabeza==nullptr) {
+            nodoEquipo* nuevoNodo = new nodoEquipo;
+            nuevoNodo->dato = nuevoEquipo;
+            nuevoNodo->siguiente = cabeza;
             cabeza = nuevoNodo;
-        } else {
-            nodoPersonaje* temp = cabeza;
-            while (temp->siguiente != nullptr) {
+
+            cout<<"Equipo '"<<nuevoEquipo.nombre<<"' creado.";
+        }
+
+        void mostrarEquipo() {
+            if (cabeza == nullptr) {
+                cout<<"No hay equipos registrados."<<endl;
+                return;
+                }
+
+            nodoEquipo* temp = cabeza;
+            int cont = 1;
+            while (temp != nullptr) {
+                cout<<"Equipo #"<<cont++<<": "<<temp->dato.nombre<<endl;
+                cout<<"Personajes del equipo: "<<endl;
+
+                for (int i = 0; i < temp->dato.numPjs; i++) {
+                    nodoPersonaje* personaje = temp->dato.personajes[i];
+                    if (personaje!=nullptr) {
+                        cout<<" -"<<personaje->dato.nombre<<endl;
+                    }
+                }
+                cout<<"______________"<<endl;
                 temp = temp->siguiente;
             }
-            temp->siguiente = nuevoNodo;
         }
-
-        cout<<"Personaje '"<<nuevoPersonaje.nombre<<"' agregado."<<endl;
-    }
-
-    void mostrarPersonaje() {
-        if (cabeza == nullptr) {
-            cout<<"No hay personajes registrados."<<endl;
-            return;
-            }
-
-        nodoPersonaje* temp = cabeza;
-        while (temp != nullptr) {
-            cout<<"Especie: "<<temp->dato.especie<<endl;
-            cout<<"Nombre: "<<temp->dato.nombre<<endl<<endl;
-            temp = temp->siguiente;
-        }
-    }
+    
 };
 
 int leerOpcion() {
@@ -344,7 +518,7 @@ void verSubMenuEliminar() {
     }
 } 
 
-void verSubMenuAgregar(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes) {
+void verSubMenuAgregar(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, listaEquipos& listaEquipos) {
     int op;
     cout<<"\n-- Crear Elemento --"<<endl;
     cout<<"1. Especie"<<endl;
@@ -356,14 +530,18 @@ void verSubMenuAgregar(listaEspecies& listaEspecies, listaPersonajes& listaPerso
     cout<<"7. Volver al menu principal"<<endl;
     cout<<"Seleccione una opcion: ";
     op=leerOpcion();
+    cout<<"______________________"<<endl;
+
 
     switch (op) {
         case 1:
             cout<<"Creando Especie..."<<endl;
+            cout<<"__________________"<<endl;
             listaEspecies.agregarEspecie();
             break;
         case 2:
             cout<<"Creando Personaje..."<<endl;
+            cout<<"__________________"<<endl;
             listaPersonajes.agregarPersonaje(listaEspecies);
             break;
         case 3:
@@ -371,6 +549,9 @@ void verSubMenuAgregar(listaEspecies& listaEspecies, listaPersonajes& listaPerso
             break;
         case 4:
             cout<<"Ingresando a la creacion de equipos..."<<endl;
+            cout<<"__________________"<<endl;
+
+            listaEquipos.agregarEquipo(listaPersonajes);
             break;
         case 5:
             cout<<"Ingresando a la creacion de mochilas..."<<endl;
@@ -383,7 +564,7 @@ void verSubMenuAgregar(listaEspecies& listaEspecies, listaPersonajes& listaPerso
     }
 } 
 
-void verSubMenuInformacion(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes) {
+void verSubMenuInformacion(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, listaEquipos& listaEquipos) {
     int op;
     cout<<"\n__Ver Informacion__"<<endl;
     cout<<"1. Especies"<<endl;
@@ -398,6 +579,8 @@ void verSubMenuInformacion(listaEspecies& listaEspecies, listaPersonajes& listaP
     cout<<"10. Volver al menu principal"<<endl;
     cout<<"Seleccione una opcion: ";
     op=leerOpcion();
+    cout<<"______________________"<<endl;
+
 
     switch (op) {
         case 1:
@@ -413,6 +596,7 @@ void verSubMenuInformacion(listaEspecies& listaEspecies, listaPersonajes& listaP
             break;
         case 4:
             cout<<"Mostrando Equipos..."<<endl;
+                listaEquipos.mostrarEquipo();
             break;
         case 5:
             cout<<"Mostrando Mochilas..."<<endl;
@@ -435,14 +619,28 @@ void verSubMenuInformacion(listaEspecies& listaEspecies, listaPersonajes& listaP
 }
 
 int main() {
-    listaEspecies listaE;
-    listaPersonajes listaP;
+    listaEspecies listaEspecies;
+    listaPersonajes listaPersonajes;
+    listaEquipos listaEquipos;
+
+    //especies
+    listaEspecies.agregarEspecie("Elfo", "Heroe", 50, 0, 120, 25);
+    listaEspecies.agregarEspecie("Hombre", "Heroe", 110, 0, 100, 15);
+    listaEspecies.agregarEspecie("Enano", "Heroe", 80, 0, 80, 10);
+    listaEspecies.agregarEspecie("Hobbit", "Heroe", 75, 0, 70, 20);
+    listaEspecies.agregarEspecie("Mago", "Heroe", 95, 0, 90, 15);
+
+    //personajes
+    listaPersonajes.agregarPersonaje("Enano", "Manolo");
+    listaPersonajes.agregarPersonaje("Hobbit", "Rufus");
+    listaPersonajes.agregarPersonaje("Mago", "Bartolo");
+    listaPersonajes.agregarPersonaje("Hombre", "Lucius");
+    listaPersonajes.agregarPersonaje("Elfo", "Erd");
+
+    
     int op = 0;
-
     cout<<"\n___Bienvenido a Khazad-Dum___"<<endl;
-
     do {
-        // Menú principal
         cout<<"____Menu de Interacciones____"<<endl;
         cout<<"1. Ver Informacion"<<endl;
         cout<<"2. Crear Elemento"<<endl;
@@ -456,10 +654,10 @@ int main() {
 
         switch (op) {
             case 1:
-                verSubMenuInformacion(listaE, listaP);
+                verSubMenuInformacion(listaEspecies, listaPersonajes, listaEquipos);
                 break;
             case 2:
-                verSubMenuAgregar(listaE, listaP);
+                verSubMenuAgregar(listaEspecies, listaPersonajes, listaEquipos);
                 break;
             case 3:
                 verSubMenuEliminar();
@@ -482,4 +680,3 @@ int main() {
 
     return 0;
 }
-
