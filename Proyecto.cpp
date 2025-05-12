@@ -59,6 +59,20 @@ struct mapa {
     int cantOrcos;
 };
 
+int leerOpcion() {
+    int op;
+    while (true) {
+        cin >> op;
+        if (cin.fail()) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "Opcion invalida. Por favor ingresa un numero valido: ";
+        } else {
+            return op;
+        }
+    }
+}
+
 class listaEspecies {
     private:
         nodoEspecie* cabeza;
@@ -203,11 +217,104 @@ class listaEspecies {
             temp = temp->siguiente;
 
         }
+        cout<<"Ataque=0 Heroe, Fortaleza=0 Orco"<<endl;
     }
 
     nodoEspecie* obtenerCabeza() {
         return cabeza;
     }
+
+    nodoEspecie* seleccionarEspeciePorIndice() {
+        if (!cabeza) {
+            cout << "No hay especies registradas.\n";
+            return nullptr;
+        }
+
+        cout << "\n=== Especies disponibles ===\n";
+        nodoEspecie* temp = cabeza;
+        int i = 1;
+        while (temp) {
+            cout << i << ". " << temp->dato.nombre << endl;
+            temp = temp->siguiente;
+            i++;
+        }
+
+        int seleccion;
+        cout << "Selecciona el numero de la especie: ";
+        seleccion = leerOpcion();
+
+        temp = cabeza;
+        for (int j = 1; temp && j < seleccion; j++) {
+            temp = temp->siguiente;
+        }
+
+        if (!temp) {
+            cout << "No es valido su numero.\n";
+            return nullptr;
+        }
+
+        return temp;
+    }
+
+    void eliminarEspecie() {
+        nodoEspecie* seleccionada = seleccionarEspeciePorIndice();
+        if (!seleccionada) return;
+
+        nodoEspecie* actual = cabeza;
+        nodoEspecie* anterior = nullptr;
+
+        while (actual) {
+            if (actual == seleccionada) {
+                if (!anterior) cabeza = actual->siguiente;
+                else anterior->siguiente = actual->siguiente;
+                delete actual;
+                cout << "Especie eliminada."<<endl;
+                return;
+            }
+            anterior = actual;
+            actual = actual->siguiente;
+        }
+
+        cout << "No se encontro la especie."<<endl;
+    }
+
+    void modificarEspecie() {
+        nodoEspecie* seleccionada = seleccionarEspeciePorIndice();
+        if (!seleccionada) return;
+
+        especie& esp = seleccionada->dato;
+        cin.ignore();
+        cout << "Nuevo nombre de la especie: ";
+        getline(cin, esp.nombre);
+
+        string tipo;
+        while (true) {
+            cout << "¿Sera un Heroe o un Orco? (H/O): ";
+            getline(cin, tipo);
+            if (tipo == "H" || tipo == "h") {
+                cout << "Nueva fortaleza: ";
+                cin >> esp.fortaleza;
+                esp.ataque = 0;
+                break;
+            } else if (tipo == "O" || tipo == "o") {
+                cout << "Nuevo ataque: ";
+                cin >> esp.ataque;
+                esp.fortaleza = 0;
+                break;
+            } else {
+                cout << "Opcion no valida. Intenta de nuevo."<<endl;
+            }
+        }
+
+        cout << "Nueva salud: ";
+        cin >> esp.salud;
+
+        cout << "Nueva rapidez: ";
+        cin >> esp.rapidez;
+
+        cout << "Especie modificada exitosamente."<<endl;
+    }
+
 };
 
 class listaPersonajes {
@@ -341,6 +448,9 @@ class listaPersonajes {
                 cont++;
             }
         }
+  
+
+
 };
 
 class listaEquipos {
@@ -438,82 +548,83 @@ class listaEquipos {
     
 };
 
-int leerOpcion() {
-    int op;
-    while (true) {
-        cin >> op;
-        if (cin.fail()) {
-            cin.clear();
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            cout << "Opcion invalida. Por favor ingresa un numero valido: ";
-        } else {
-            return op;
-        }
-    }
-}
-
-void verSubMenuModificar() {
+void verSubMenuModificar(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, listaEquipos& listaEquipos) {
     int op;
     cout<<"\n-- Modificar Elemento --"<<endl;
-    cout<<"1. Personajes"<<endl;
-    cout<<"2. Implementos"<<endl;
-    cout<<"3. Equipos "<<endl;
-    cout<<"4. Mochilas"<<endl;
-    cout<<"5. Mapa"<<endl;
-    cout<<"6. Volver al menu principal"<<endl;
+    cout<<"1. Especie"<<endl;
+    cout<<"2. Personajes"<<endl;
+    cout<<"3. Implementos"<<endl;
+    cout<<"4. Equipos "<<endl;
+    cout<<"5. Mochilas"<<endl;
+    cout<<"6. Mapa"<<endl;
+    cout<<"7. Volver al menu principal"<<endl;
     cout<<"Seleccione una opcion: ";
     op=leerOpcion();
+    cout<<"______________________"<<endl;
 
     switch (op) {
         case 1:
+            cout<<"Modificando Especie..."<<endl;
+            cout<<"__________________"<<endl;
+            listaEspecies.modificarEspecie();
+            break;        
+        case 2:
             cout<<"Ingresando a la modificacion de personajes..."<<endl;
             break;
-        case 2:
+        case 3:
             cout<<"Ingresando a la modificacion de implementos..."<<endl;
             break;
-        case 3:
+        case 4:
             cout<<"Ingresando a la modificacion de equipos..."<<endl;
             break;
-        case 4:
+        case 5:
             cout<<"Ingresando a la modificacion de mochilas..."<<endl;
             break;
-        case 5:
+        case 6:
             cout<<"Ingresando a la modificacion de mapas..."<<endl;
             break;
-        case 6:
+        case 7:
             return;
     }
 } 
 
-void verSubMenuEliminar() {
+void verSubMenuEliminar(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, listaEquipos& listaEquipos) {
     int op;
     cout<<"\n-- Eliminar Elemento --"<<endl;
-    cout<<"1. Personajes"<<endl;
-    cout<<"2. Implementos"<<endl;
-    cout<<"3. Equipos "<<endl;
-    cout<<"4. Mochilas"<<endl;
-    cout<<"5. Mapa"<<endl;
-    cout<<"6. Volver al menu principal"<<endl;
+    cout<<"1. Especie"<<endl;
+    cout<<"2. Personajes"<<endl;
+    cout<<"3. Implementos"<<endl;
+    cout<<"4. Equipos "<<endl;
+    cout<<"5. Mochilas"<<endl;
+    cout<<"6. Mapa"<<endl;
+    cout<<"7. Volver al menu principal"<<endl;
     cout<<"Seleccione una opcion: ";
     op=leerOpcion();
+    cout<<"______________________"<<endl;
+
 
     switch (op) {
         case 1:
+            cout<<"Eliminando especie..."<<endl;
+            cout<<"__________________"<<endl;
+            listaEspecies.eliminarEspecie();
+            break;        
+        case 2:
             cout<<"Ingresando a la eliminacion de personajes..."<<endl;
             break;
-        case 2:
+        case 3:
             cout<<"Ingresando a la eliminacion de implementos..."<<endl;
             break;
-        case 3:
+        case 4:
             cout<<"Ingresando a la eliminacion de equipos..."<<endl;
             break;
-        case 4:
+        case 5:
             cout<<"Ingresando a la eliminacion de mochilas..."<<endl;
             break;
-        case 5:
+        case 6:
             cout<<"Ingresando a la eliminacion de mapas..."<<endl;
             break;
-        case 6:
+        case 7:
             return;
     }
 } 
@@ -548,9 +659,8 @@ void verSubMenuAgregar(listaEspecies& listaEspecies, listaPersonajes& listaPerso
             cout<<"Ingresando a la creacion de implementos..."<<endl;
             break;
         case 4:
-            cout<<"Ingresando a la creacion de equipos..."<<endl;
+            cout<<"Creando Equipo..."<<endl;
             cout<<"__________________"<<endl;
-
             listaEquipos.agregarEquipo(listaPersonajes);
             break;
         case 5:
@@ -660,10 +770,10 @@ int main() {
                 verSubMenuAgregar(listaEspecies, listaPersonajes, listaEquipos);
                 break;
             case 3:
-                verSubMenuEliminar();
+                verSubMenuEliminar(listaEspecies, listaPersonajes, listaEquipos);
                 break;
             case 4:
-                verSubMenuModificar();
+                verSubMenuModificar(listaEspecies, listaPersonajes, listaEquipos);
                 break;
             case 5:
                 cout<<"[Visualizar Mapa] en desarrollo..."<<endl;
@@ -675,6 +785,11 @@ int main() {
         }
     }while (op!=6);
 
+
+
+
+    return 0;
+}
 
 
 
