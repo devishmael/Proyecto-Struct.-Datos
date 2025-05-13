@@ -448,7 +448,122 @@ class listaPersonajes {
                 cont++;
             }
         }
-  
+
+        nodoPersonaje* seleccionarPersonajePorIndice() {
+            if (!cabeza) {
+                cout << "No hay personajes registrados.\n";
+                return nullptr;
+            }
+
+            cout << "\n=== Personajes disponibles ===\n";
+            nodoPersonaje* temp = cabeza;
+            int i = 1;
+            while (temp) {
+                cout << i << ". " << temp->dato.nombre << endl;
+                temp = temp->siguiente;
+                i++;
+            }
+
+            int seleccion;
+            cout << "Selecciona el numero del personaje: ";
+            seleccion = leerOpcion();
+
+            temp = cabeza;
+            for (int j = 1; temp && j < seleccion; j++) {
+                temp = temp->siguiente;
+            }
+
+            if (!temp) {
+                cout << "No es valido su numero.\n";
+                return nullptr;
+            }
+
+            return temp;
+        }   
+
+        void eliminarPersonaje() {
+        nodoPersonaje* seleccionada = seleccionarPersonajePorIndice();
+        if (!seleccionada) return;
+
+        nodoPersonaje* actual = cabeza;
+        nodoPersonaje* anterior = nullptr;
+
+        while (actual) {
+            if (actual == seleccionada) {
+                if (!anterior) cabeza = actual->siguiente;
+                else anterior->siguiente = actual->siguiente;
+                delete actual;
+                cout << "Personaje '"<< actual->dato.nombre <<"' eliminado."<<endl;
+                return;
+            }
+            anterior = actual;
+            actual = actual->siguiente;
+        }
+
+        cout << "No se encontro el personaje."<<endl;
+    }
+
+    void modificarPersonaje(listaEspecies& lista) {
+        nodoPersonaje* seleccionada = seleccionarPersonajePorIndice();
+        if (!seleccionada) return;
+
+        personaje& esp = seleccionada->dato;
+        while (true) {
+            cout<<"Ingrese el nombre del personaje: ";
+            cin>>esp.nombre;
+
+            //esto valida q el nombre tenga letras
+            bool valido = true;
+            for (char c : esp.nombre) {
+                if (!isalpha(c)) {
+                    valido = false;
+                    break;
+                }
+            }
+
+            if (valido) {
+                break; 
+            } else {
+                cout<<"Nombre no valido. Solo letras. Intenta de nuevo." << endl;
+                }
+        }
+
+        cout<<"\n --Lista de Especies--\n";
+        lista.mostrarEspecie();
+
+        int op; 
+        while (true) {
+            cout << "Ingresa el numero de la especie: ";
+            cin >> op;
+
+            if (cin.fail()) {
+                cin.clear();
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                cout << "Numero no valido. Por favor ingresa un numero."<<endl;
+                continue;
+            }
+
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+            nodoEspecie* tempEsp = lista.obtenerCabeza();
+            int cont = 1;
+            while (tempEsp != nullptr && cont < op) {
+                tempEsp = tempEsp->siguiente;
+                cont++;
+            }
+
+            if (tempEsp == nullptr) {
+                cout<<"No hay especies con ese numero, intenta denuevo."<<endl;   
+                continue;
+                
+            }
+
+            esp.especie = tempEsp->dato.nombre;
+            break;
+        }
+
+        cout << "Personaje modificado."<<endl;
+    }
 
 
 };
@@ -570,6 +685,8 @@ void verSubMenuModificar(listaEspecies& listaEspecies, listaPersonajes& listaPer
             break;        
         case 2:
             cout<<"Ingresando a la modificacion de personajes..."<<endl;
+            cout<<"__________________"<<endl;
+            listaPersonajes.modificarPersonaje(listaEspecies);
             break;
         case 3:
             cout<<"Ingresando a la modificacion de implementos..."<<endl;
@@ -610,7 +727,9 @@ void verSubMenuEliminar(listaEspecies& listaEspecies, listaPersonajes& listaPers
             listaEspecies.eliminarEspecie();
             break;        
         case 2:
-            cout<<"Ingresando a la eliminacion de personajes..."<<endl;
+            cout<<"Eliminando Personaje..."<<endl;
+            cout<<"__________________"<<endl;
+            listaPersonajes.eliminarPersonaje();
             break;
         case 3:
             cout<<"Ingresando a la eliminacion de implementos..."<<endl;
@@ -683,10 +802,9 @@ void verSubMenuInformacion(listaEspecies& listaEspecies, listaPersonajes& listaP
     cout<<"4. Equipos (Soldados)"<<endl;
     cout<<"5. Mochilas" << endl;
     cout<<"6. Mapas" << endl;
-    cout<<"7. Equipos completos y mochilas"<<endl;
-    cout<<"8. Resultados de Misiones"<<endl;
-    cout<<"9. Bitacora"<<endl;
-    cout<<"10. Volver al menu principal"<<endl;
+    cout<<"7. Resultados de Misiones"<<endl;
+    cout<<"8. Bitacora"<<endl;
+    cout<<"9. Volver al menu principal"<<endl;
     cout<<"Seleccione una opcion: ";
     op=leerOpcion();
     cout<<"______________________"<<endl;
@@ -695,10 +813,12 @@ void verSubMenuInformacion(listaEspecies& listaEspecies, listaPersonajes& listaP
     switch (op) {
         case 1:
             cout<<"Mostrando Especies..."<<endl;
+            cout<<"__________________"<<endl;
                 listaEspecies.mostrarEspecie();
             break;
         case 2:
             cout<<"Mostrando Personajes..."<<endl;
+            cout<<"__________________"<<endl;
                 listaPersonajes.mostrarPersonaje();
             break;
         case 3:
@@ -706,6 +826,7 @@ void verSubMenuInformacion(listaEspecies& listaEspecies, listaPersonajes& listaP
             break;
         case 4:
             cout<<"Mostrando Equipos..."<<endl;
+            cout<<"__________________"<<endl;
                 listaEquipos.mostrarEquipo();
             break;
         case 5:
@@ -715,15 +836,14 @@ void verSubMenuInformacion(listaEspecies& listaEspecies, listaPersonajes& listaP
             cout<<"Mostrando Mapas..."<<endl;
             break;
         case 7:
-            cout<<"Mostrando equipos y mochilas..."<<endl;
+            cout<<"Mostrando resultados de misiones..."<<endl;
+            cout<<"En construccion..."<<endl;
+            cout<<"__________________"<<endl;
             break;
         case 8:
-            cout<<"Mostrando resultados de misiones..."<<endl;
-            break;
-        case 9:
             cout<<"Mostrando bitacora..."<<endl;
             break;
-        case 10:
+        case 9:
             return;
     }
 }
@@ -785,11 +905,6 @@ int main() {
         }
     }while (op!=6);
 
-
-
-
-    return 0;
-}
 
 
 
