@@ -482,90 +482,86 @@ class listaPersonajes {
         }   
 
         void eliminarPersonaje() {
-        nodoPersonaje* seleccionada = seleccionarPersonajePorIndice();
-        if (!seleccionada) return;
+            nodoPersonaje* seleccionada = seleccionarPersonajePorIndice();
+            if (!seleccionada) return;
 
-        nodoPersonaje* actual = cabeza;
-        nodoPersonaje* anterior = nullptr;
+            nodoPersonaje* actual = cabeza;
+            nodoPersonaje* anterior = nullptr;
 
-        while (actual) {
-            if (actual == seleccionada) {
-                if (!anterior) cabeza = actual->siguiente;
-                else anterior->siguiente = actual->siguiente;
-                delete actual;
-                cout << "Personaje '"<< actual->dato.nombre <<"' eliminado."<<endl;
-                return;
-            }
-            anterior = actual;
-            actual = actual->siguiente;
-        }
-
-        cout << "No se encontro el personaje."<<endl;
-    }
-
-    void modificarPersonaje(listaEspecies& lista) {
-        nodoPersonaje* seleccionada = seleccionarPersonajePorIndice();
-        if (!seleccionada) return;
-
-        personaje& esp = seleccionada->dato;
-        while (true) {
-            cout<<"Ingrese el nombre del personaje: ";
-            cin>>esp.nombre;
-
-            //esto valida q el nombre tenga letras
-            bool valido = true;
-            for (char c : esp.nombre) {
-                if (!isalpha(c)) {
-                    valido = false;
-                    break;
+            while (actual) {
+                if (actual == seleccionada) {
+                    if (!anterior) cabeza = actual->siguiente;
+                    else anterior->siguiente = actual->siguiente;
+                    delete actual;
+                    cout << "Personaje '"<< actual->dato.nombre <<"' eliminado."<<endl;
+                    return;
                 }
+                anterior = actual;
+                actual = actual->siguiente;
             }
 
-            if (valido) {
-                break; 
-            } else {
-                cout<<"Nombre no valido. Solo letras. Intenta de nuevo." << endl;
-                }
+            cout << "No se encontro el personaje."<<endl;
         }
 
-        cout<<"\n --Lista de Especies--\n";
-        lista.mostrarEspecie();
+        void modificarPersonaje(listaEspecies& lista) {
+            nodoPersonaje* seleccionada = seleccionarPersonajePorIndice();
+            if (!seleccionada) return;
 
-        int op; 
-        while (true) {
-            cout << "Ingresa el numero de la especie: ";
-            cin >> op;
+            personaje& esp = seleccionada->dato;
+            while (true) {
+                cout<<"Ingrese el nombre del personaje: ";
+                cin>>esp.nombre;
 
-            if (cin.fail()) {
-                cin.clear();
+                //esto valida q el nombre tenga letras
+                bool valido = true;
+                for (char c : esp.nombre) {
+                    if (!isalpha(c)) {
+                        valido = false;
+                        break;
+                    }
+                }
+
+                if (valido) {
+                    break; 
+                } else {
+                    cout<<"Nombre no valido. Solo letras. Intenta de nuevo." << endl;
+                    }
+            }
+
+            cout<<"\n --Lista de Especies--\n";
+            lista.mostrarEspecie();
+
+            int op; 
+            while (true) {
+                cout << "Ingresa el numero de la especie: ";
+                cin >> op;
+
+                if (cin.fail()) {
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout << "Numero no valido. Por favor ingresa un numero."<<endl;
+                    continue;
+                }
+
                 cin.ignore(numeric_limits<streamsize>::max(), '\n');
-                cout << "Numero no valido. Por favor ingresa un numero."<<endl;
-                continue;
+
+                nodoEspecie* tempEsp = lista.obtenerCabeza();
+                int cont = 1;
+                while (tempEsp != nullptr && cont < op) {
+                    tempEsp = tempEsp->siguiente;
+                    cont++;
+                }
+
+                if (tempEsp == nullptr) {
+                    cout<<"No hay especies con ese numero, intenta denuevo."<<endl;   
+                 continue;
+                }
+
+                esp.especie = tempEsp->dato.nombre;
+                break;
             }
-
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-
-            nodoEspecie* tempEsp = lista.obtenerCabeza();
-            int cont = 1;
-            while (tempEsp != nullptr && cont < op) {
-                tempEsp = tempEsp->siguiente;
-                cont++;
-            }
-
-            if (tempEsp == nullptr) {
-                cout<<"No hay especies con ese numero, intenta denuevo."<<endl;   
-                continue;
-                
-            }
-
-            esp.especie = tempEsp->dato.nombre;
-            break;
-        }
-
-        cout << "Personaje modificado."<<endl;
+            cout << "Personaje modificado."<<endl;
     }
-
-
 };
 
 class listaEquipos {
@@ -660,6 +656,59 @@ class listaEquipos {
                 temp = temp->siguiente;
             }
         }
+
+        nodoEquipo* seleccionarEquipoPorIndice() {
+            if (!cabeza) {
+                cout << "No hay equipos registrados.\n";
+                return nullptr;
+            }
+
+            cout << "\n=== Equipos disponibles ===\n";
+            nodoEquipo* temp = cabeza;
+            int i = 1;
+            while (temp) {
+                cout << i << ". " << temp->dato.nombre << endl;
+                temp = temp->siguiente;
+                i++;
+            }
+
+            int seleccion;
+            cout << "Selecciona el numero del equipo: ";
+            seleccion = leerOpcion();
+
+            temp = cabeza;
+            for (int j = 1; temp && j < seleccion; j++) {
+                temp = temp->siguiente;
+            }
+
+            if (!temp) {
+                cout << "No es valido su numero.\n";
+                return nullptr;
+            }
+
+            return temp;
+        }
+
+        void eliminarEquipo() {
+            nodoEquipo* seleccionada = seleccionarEquipoPorIndice();
+            if (!seleccionada) return;
+
+            nodoEquipo* actual = cabeza;
+            nodoEquipo* anterior = nullptr;
+
+            while (actual) {
+                if (actual == seleccionada) {
+                    if (!anterior) cabeza = actual->siguiente;
+                    else anterior->siguiente = actual->siguiente;
+                    delete actual;
+                    cout << "Equipo eliminado."<<endl;
+                    return;
+                }
+                anterior = actual;
+                actual = actual->siguiente;
+            }
+            cout << "No se encontro el equipo."<<endl;
+        }
     
 };
 
@@ -669,10 +718,9 @@ void verSubMenuModificar(listaEspecies& listaEspecies, listaPersonajes& listaPer
     cout<<"1. Especie"<<endl;
     cout<<"2. Personajes"<<endl;
     cout<<"3. Implementos"<<endl;
-    cout<<"4. Equipos "<<endl;
-    cout<<"5. Mochilas"<<endl;
-    cout<<"6. Mapa"<<endl;
-    cout<<"7. Volver al menu principal"<<endl;
+    cout<<"4. Mochilas"<<endl;
+    cout<<"5. Mapa"<<endl;
+    cout<<"6. Volver al menu principal"<<endl;
     cout<<"Seleccione una opcion: ";
     op=leerOpcion();
     cout<<"______________________"<<endl;
@@ -692,15 +740,12 @@ void verSubMenuModificar(listaEspecies& listaEspecies, listaPersonajes& listaPer
             cout<<"Ingresando a la modificacion de implementos..."<<endl;
             break;
         case 4:
-            cout<<"Ingresando a la modificacion de equipos..."<<endl;
-            break;
-        case 5:
             cout<<"Ingresando a la modificacion de mochilas..."<<endl;
             break;
-        case 6:
+        case 5:
             cout<<"Ingresando a la modificacion de mapas..."<<endl;
             break;
-        case 7:
+        case 6:
             return;
     }
 } 
@@ -722,7 +767,7 @@ void verSubMenuEliminar(listaEspecies& listaEspecies, listaPersonajes& listaPers
 
     switch (op) {
         case 1:
-            cout<<"Eliminando especie..."<<endl;
+            cout<<"Eliminando Especie..."<<endl;
             cout<<"__________________"<<endl;
             listaEspecies.eliminarEspecie();
             break;        
@@ -735,7 +780,9 @@ void verSubMenuEliminar(listaEspecies& listaEspecies, listaPersonajes& listaPers
             cout<<"Ingresando a la eliminacion de implementos..."<<endl;
             break;
         case 4:
-            cout<<"Ingresando a la eliminacion de equipos..."<<endl;
+            cout<<"Eliminando Equipo..."<<endl;
+            cout<<"__________________"<<endl;
+            listaEquipos.eliminarEquipo();
             break;
         case 5:
             cout<<"Ingresando a la eliminacion de mochilas..."<<endl;
@@ -901,12 +948,7 @@ int main() {
             case 6:
                 cout<<"Saliendo del programa..."<<endl;
                 return 0;
-        
         }
     }while (op!=6);
-
-
-
-
     return 0;
 }
