@@ -663,7 +663,150 @@ class listaEquipos {
     
 };
 
-void verSubMenuModificar(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, listaEquipos& listaEquipos) {
+class listaImplementos {
+private:
+    implemento* implementos;
+    int capacidad;
+    int cantidad;
+
+public:
+    listaImplementos() {
+        capacidad = 10;
+        cantidad = 0;
+        implementos = new implemento[capacidad];
+    }
+
+    ~listaImplementos() {
+        delete[] implementos;
+    }
+
+    void agregarImplemento() {
+        if (cantidad == capacidad) {
+            capacidad *= 2;
+            implemento* nuevoArray = new implemento[capacidad];
+            for (int i = 0; i < cantidad; i++) {
+                nuevoArray[i] = implementos[i];
+            }
+            delete[] implementos;
+            implementos = nuevoArray;
+        }
+
+        implemento nuevo;
+        cin.ignore();
+        cout << "Nombre del implemento: ";
+        getline(cin, nuevo.nombre);
+
+        string tipo;
+        while (true) {
+            cout << "Tipo (atacar / defender / curar): ";
+            getline(cin, tipo);
+            if (tipo == "atacar" || tipo == "defender" || tipo == "curar") {
+                nuevo.tipo = tipo;
+                break;
+            } else {
+                cout << "Tipo no válido. Por favor escribe 'atacar', 'defender' o 'curar'.\n";
+            }
+        }
+
+        cout << "Usos: ";
+        while (!(cin >> nuevo.usos)) {
+            cout << "Entrada inválida. Ingrese un número entero: ";
+            cin.clear(); cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        }
+
+        cout << "Fortaleza: ";
+        while (!(cin >> nuevo.fortaleza)) {
+            cout << "Entrada inválida. Ingrese un número entero: ";
+            cin.clear(); cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        }
+
+        cout << "Valor de ataque: ";
+        while (!(cin >> nuevo.valorAtk)) {
+            cout << "Entrada inválida. Ingrese un número decimal: ";
+            cin.clear(); cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        }
+
+        cout << "Valor de defensa: ";
+        while (!(cin >> nuevo.valorDef)) {
+            cout << "Entrada inválida. Ingrese un número decimal: ";
+            cin.clear(); cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        }
+
+        cout << "Valor de curación: ";
+        while (!(cin >> nuevo.valorHeal)) {
+            cout << "Entrada inválida. Ingrese un número decimal: ";
+            cin.clear(); cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        }
+
+        implementos[cantidad++] = nuevo;
+        cout << "Implemento agregado correctamente.\n";
+    }
+
+    void mostrarImplementos() {
+        if (cantidad == 0) {
+            cout << "No hay implementos registrados.\n";
+            return;
+        }
+        for (int i = 0; i < cantidad; i++) {
+            cout << i+1 << ". " << implementos[i].nombre << " (" << implementos[i].tipo << ") - Usos: " << implementos[i].usos << "\n";
+        }
+    }
+
+    void eliminarImplemento() {
+        mostrarImplementos();
+        cout << "Seleccione el número del implemento a eliminar: ";
+        int sel = leerOpcion();
+        if (sel < 1 || sel > cantidad) {
+            cout << "Opción inválida.\n";
+            return;
+        }
+        for (int i = sel - 1; i < cantidad - 1; i++) {
+            implementos[i] = implementos[i + 1];
+        }
+        cantidad--;
+        cout << "Implemento eliminado.\n";
+    }
+
+    void modificarImplemento() {
+        mostrarImplementos();
+        cout << "Seleccione el número del implemento a modificar: ";
+        int sel = leerOpcion();
+        if (sel < 1 || sel > cantidad) {
+            cout << "Opción inválida.\n";
+            return;
+        }
+        implemento& imp = implementos[sel - 1];
+        cin.ignore();
+        cout << "Nuevo nombre: ";
+        getline(cin, imp.nombre);
+
+        string tipo;
+        while (true) {
+            cout << "Nuevo tipo (atacar / defender / curar): ";
+            getline(cin, tipo);
+            if (tipo == "atacar" || tipo == "defender" || tipo == "curar") {
+                imp.tipo = tipo;
+                break;
+            } else {
+                cout << "Tipo no válido. Por favor escribe 'atacar', 'defender' o 'curar'.\n";
+            }
+        }
+
+        cout << "Nuevos usos: ";
+        cin >> imp.usos;
+        cout << "Nueva fortaleza: ";
+        cin >> imp.fortaleza;
+        cout << "Nuevo valor de ataque: ";
+        cin >> imp.valorAtk;
+        cout << "Nuevo valor de defensa: ";
+        cin >> imp.valorDef;
+        cout << "Nuevo valor de curación: ";
+        cin >> imp.valorHeal;
+        cout << "Implemento modificado.\n";
+    }
+};
+
+void verSubMenuModificar(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, listaEquipos& listaEquipos, listaImplementos& listaImplementos) {
     int op;
     cout<<"\n-- Modificar Elemento --"<<endl;
     cout<<"1. Especie"<<endl;
@@ -690,6 +833,8 @@ void verSubMenuModificar(listaEspecies& listaEspecies, listaPersonajes& listaPer
             break;
         case 3:
             cout<<"Ingresando a la modificacion de implementos..."<<endl;
+            cout<<"__________________"<<endl;
+            listaImplementos.modificarImplemento();
             break;
         case 4:
             cout<<"Ingresando a la modificacion de equipos..."<<endl;
@@ -705,7 +850,7 @@ void verSubMenuModificar(listaEspecies& listaEspecies, listaPersonajes& listaPer
     }
 } 
 
-void verSubMenuEliminar(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, listaEquipos& listaEquipos) {
+void verSubMenuEliminar(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, listaEquipos& listaEquipos, listaImplementos& listaImplementos) {
     int op;
     cout<<"\n-- Eliminar Elemento --"<<endl;
     cout<<"1. Especie"<<endl;
@@ -733,6 +878,8 @@ void verSubMenuEliminar(listaEspecies& listaEspecies, listaPersonajes& listaPers
             break;
         case 3:
             cout<<"Ingresando a la eliminacion de implementos..."<<endl;
+            cout<<"__________________"<<endl;
+            listaImplementos.eliminarImplemento();
             break;
         case 4:
             cout<<"Ingresando a la eliminacion de equipos..."<<endl;
@@ -748,7 +895,7 @@ void verSubMenuEliminar(listaEspecies& listaEspecies, listaPersonajes& listaPers
     }
 } 
 
-void verSubMenuAgregar(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, listaEquipos& listaEquipos) {
+void verSubMenuAgregar(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, listaEquipos& listaEquipos, listaImplementos& listaImplementos) {
     int op;
     cout<<"\n-- Crear Elemento --"<<endl;
     cout<<"1. Especie"<<endl;
@@ -775,7 +922,9 @@ void verSubMenuAgregar(listaEspecies& listaEspecies, listaPersonajes& listaPerso
             listaPersonajes.agregarPersonaje(listaEspecies);
             break;
         case 3:
-            cout<<"Ingresando a la creacion de implementos..."<<endl;
+            cout<<"Creando Implemento..."<<endl;
+            cout<<"__________________"<<endl;
+            listaImplementos.agregarImplemento();
             break;
         case 4:
             cout<<"Creando Equipo..."<<endl;
@@ -793,7 +942,7 @@ void verSubMenuAgregar(listaEspecies& listaEspecies, listaPersonajes& listaPerso
     }
 } 
 
-void verSubMenuInformacion(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, listaEquipos& listaEquipos) {
+void verSubMenuInformacion(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, listaEquipos& listaEquipos, listaImplementos& listaImplementos) {
     int op;
     cout<<"\n__Ver Informacion__"<<endl;
     cout<<"1. Especies"<<endl;
@@ -823,6 +972,8 @@ void verSubMenuInformacion(listaEspecies& listaEspecies, listaPersonajes& listaP
             break;
         case 3:
             cout<<"Mostrando Implementos..."<<endl;
+            cout<<"__________________"<<endl;
+                listaImplementos.mostrarImplementos();
             break;
         case 4:
             cout<<"Mostrando Equipos..."<<endl;
@@ -852,6 +1003,7 @@ int main() {
     listaEspecies listaEspecies;
     listaPersonajes listaPersonajes;
     listaEquipos listaEquipos;
+    listaImplementos listaImplementos;
 
     //especies
     listaEspecies.agregarEspecie("Elfo", "Heroe", 50, 0, 120, 25);
@@ -884,16 +1036,16 @@ int main() {
 
         switch (op) {
             case 1:
-                verSubMenuInformacion(listaEspecies, listaPersonajes, listaEquipos);
+                verSubMenuInformacion(listaEspecies, listaPersonajes, listaEquipos, listaImplementos);
                 break;
             case 2:
-                verSubMenuAgregar(listaEspecies, listaPersonajes, listaEquipos);
+                verSubMenuAgregar(listaEspecies, listaPersonajes, listaEquipos, listaImplementos);
                 break;
             case 3:
-                verSubMenuEliminar(listaEspecies, listaPersonajes, listaEquipos);
+                verSubMenuEliminar(listaEspecies, listaPersonajes, listaEquipos, listaImplementos);
                 break;
             case 4:
-                verSubMenuModificar(listaEspecies, listaPersonajes, listaEquipos);
+                verSubMenuModificar(listaEspecies, listaPersonajes, listaEquipos, listaImplementos);
                 break;
             case 5:
                 cout<<"[Visualizar Mapa] en desarrollo..."<<endl;
