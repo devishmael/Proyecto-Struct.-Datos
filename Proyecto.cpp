@@ -1,64 +1,16 @@
+//Modulos
 #include <iostream>
 #include <limits>
+#include <fstream>
+#include <cstdlib>
+#include <cstring>
+#include <regex>
+#include <cctype>
+#include <iomanip>
+
 using namespace std;
 
-struct especie {
-    string nombre;
-    int fortaleza;
-    double ataque;
-    double salud;
-    double rapidez;
-    string tipo;
-};
-
-struct nodoEspecie {
-    especie dato;
-    nodoEspecie* siguiente;
-};
-
-struct personaje {
-    string especie;
-    string nombre;
-};
-
-struct nodoPersonaje {
-    personaje dato;
-    nodoPersonaje* siguiente;
-};
-
-struct equipo {
-    string nombre;
-    nodoPersonaje* personajes[4];
-    int numPjs; //Numero de personajes
-};
-
-struct nodoEquipo {
-    equipo dato;
-    nodoEquipo* siguiente;
-};
-
-struct implemento {
-    string nombre;
-    string tipo;
-    int usos;
-    int fortaleza;
-    int valorAtk;
-    int valorDef;
-    int valorHeal;
-};
-
-struct magia {
-    string nombre;
-    string funcion;
-};
-
-struct mapa {
-    int sala;
-    int distancia;
-    int adyacencias;
-    int cantOrcos;
-};
-
+//Funcion para validar opciones numericas
 int leerOpcion() {
     int op;
     while (true) {
@@ -73,6 +25,330 @@ int leerOpcion() {
     }
 }
 
+//Declaraciones Anticipadas
+struct nodoEspecie;
+struct nodoPersonaje;
+class listaEspecies;
+class listaPersonajes;
+class listaMochilas;
+
+//Estructuras de las Especies
+struct especie {
+    string nombre;
+    int fortaleza;
+    double ataque;
+    double salud;
+    double rapidez;
+    string tipo;
+};
+struct nodoEspecie {
+    especie dato;
+    nodoEspecie* siguiente;
+};
+
+//Estructura de las Mochilas e Implementos
+struct implemento {
+    string nombre;
+    string tipo;
+    int usos;
+    int fortaleza;
+    int valorAtk;
+    int valorDef;
+    int valorHeal;
+    bool enUso;
+
+    implemento() : enUso(false) {} // Iniciar enUso a false
+};
+struct mochila {
+    implemento* implementos[5];
+    int numImplementos;
+
+    mochila() : numImplementos(0) {
+        for (int i = 0; i < 5; i++) {
+            implementos[i] = nullptr;
+        }
+    }
+
+    void agregarImplementoAMochila(implemento* imp) {
+        if (imp->enUso) {
+            cout << "El implemento '" << imp->nombre << "' ya está en uso y no se puede agregar a la mochila.\n";
+            return;
+        }
+
+        if (numImplementos < 5) {
+            implementos[numImplementos++] = imp;
+            imp->enUso = true; // Marcar el implemento como en uso
+            cout << "Implemento '" << imp->nombre << "' agregado a la mochila.\n";
+        } else {
+            cout << "La mochila está llena.\n";
+        }
+    }
+
+    void eliminarImplementoEnMochila(int ind) {
+        if (ind < 0 || ind >= numImplementos) {
+            cout << "Índice inválido.\n";
+            return;
+        }
+        cout << "Implemento '" << implementos[ind]->nombre << "' eliminado.\n";
+        implementos[ind]->enUso = false;
+        for (int i = ind; i < numImplementos - 1; i++) {
+            implementos[i] = implementos[i + 1];
+        }
+        numImplementos--;
+    }
+
+    void mostrarMochila() {
+        if (numImplementos == 0) {
+            cout << "La mochila está vacía.\n";
+            return;
+        }
+        cout << "\nContenido de la mochila (" << numImplementos << "/5):\n";
+        cout << left << setw(5) << "No." 
+            << setw(25) << "Nombre del implemento"
+            << setw(20) << "Tipo"
+            << setw(15) << "Usos restantes" << endl;
+        cout << "----------------------------------------------------\n";
+        for (int i = 0; i < numImplementos; i++) {
+            cout << left << setw(5) << i+1 
+                << setw(25) << implementos[i]->nombre
+                << setw(20) << implementos[i]->tipo
+                << setw(15) << implementos[i]->usos << endl;
+        }
+        cout << "----------------------------------------------------\n";
+    }
+};
+
+//Estructuras de los Personajes
+struct personaje {
+    nodoEspecie* especie;
+    string nombre;
+    mochila mochila;
+};
+struct nodoPersonaje {
+    personaje dato;
+    nodoPersonaje* siguiente;
+};
+
+//Lista de los Implementos
+class listaImplementos {
+    private:
+        implemento* implementos;
+        int capacidad;
+        int cantidad;
+
+    public:
+        listaImplementos() {
+            capacidad= 10;
+            cantidad= 0;
+            implementos= new implemento[capacidad];
+        }
+
+        ~listaImplementos() {
+        delete[] implementos;
+        }
+
+        int obtenerCantidad() const {
+            return cantidad;
+        }
+
+        implemento* obtenerImplemento(int ind) {
+            if (ind >= 0 && ind < cantidad) {
+                return &implementos[ind];
+            }
+            return nullptr; // Retorna nullptr si el índice es inválido
+        }
+
+        void agregarImplemento(string nombre, string tipo, int usos, int fortaleza, int valorAtk, int valorDef, int valorHeal) {
+            if(cantidad== capacidad) {
+                capacidad*= 2;
+                implemento* nuevoArray= new implemento[capacidad];
+                for(int i= 0; i<cantidad; i++) {
+                    nuevoArray[i]= implementos[i];
+                }
+                delete[] implementos;
+                implementos= nuevoArray;
+            }
+
+            implemento nuevo;
+         nuevo.nombre= nombre;
+            nuevo.tipo= tipo;
+         nuevo.usos= usos;
+         nuevo.fortaleza= fortaleza;
+
+            if(nuevo.tipo=="atacar") {
+                nuevo.valorAtk= valorAtk;
+                nuevo.valorDef= 0;
+                nuevo.valorHeal= 0;
+            } else if(nuevo.tipo=="defender") {
+                nuevo.valorDef= valorDef;
+                nuevo.valorAtk= 0;
+                nuevo.valorHeal= 0;
+            } else if(nuevo.tipo=="curar") {
+                nuevo.valorHeal= valorHeal;
+                nuevo.valorAtk= 0;
+                nuevo.valorDef= 0;
+            }
+
+            implementos[cantidad++]= nuevo;
+        }
+
+        void agregarImplemento() {
+            if(cantidad== capacidad) {
+                capacidad*= 2;
+                implemento* nuevoArray= new implemento[capacidad];
+                for(int i=0; i<cantidad; i++) {
+                    nuevoArray[i]= implementos[i];
+                }
+                delete[] implementos;
+                implementos= nuevoArray;
+            }
+
+            implemento nuevo;
+            cin.ignore();
+            cout<<"Nombre del implemento: ";
+            getline(cin, nuevo.nombre);
+
+            string tipo;
+            while(true) {
+                cout<<"Tipo (atacar / defender / curar): ";
+                getline(cin, tipo);
+                if(tipo=="atacar" || tipo=="defender" || tipo=="curar") {
+                    nuevo.tipo = tipo;
+                    break;
+                } else{
+                    cout<<"El tipo no es valido. Por favor escribe atacar, defender o curar.\n";
+                }
+            }
+
+         cout<<"Usos: ";
+            while(!(cin>>nuevo.usos)) {
+                cout<<"Numero invalido. Ingresa un numero entero: ";
+                cin.clear(); cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            }
+
+            cout<<"Fortaleza: ";
+            while(!(cin>>nuevo.fortaleza)) {
+                cout<<"Cantidad invalida. Ingresa un numero entero: ";
+                cin.clear(); cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            }
+
+            if(nuevo.tipo=="atacar") {
+                cout<<"Valor de ataque: ";
+                while (!(cin>>nuevo.valorAtk)) {
+                    cout<<"Cantidad invalida. Ingresa un numero entero: ";
+                    cin.clear(); cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                }
+            } else if(nuevo.tipo=="defender") {
+                cout<<"Valor de defensa: ";
+                while(!(cin>>nuevo.valorDef)) {
+                    cout<<"Cantidad invalida. Ingresa un numero entero: ";
+                    cin.clear(); cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                }
+            } else if(nuevo.tipo=="curar") {
+                cout<<"Valor de curacion: ";
+                while(!(cin>>nuevo.valorHeal)) {
+                    cout<<"Cantidad invalida. Ingresa un numero decimal: ";
+                    cin.clear(); cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                }
+            }
+
+            implementos[cantidad++]= nuevo;
+            cout<<"Implemento agregado.\n";
+        }
+
+        void mostrarImplementos() {
+            if(cantidad == 0) {
+                cout << "No hay implementos registrados.\n";
+                cout << "__________________________\n";
+                return;
+            }
+
+            // Encabezado de la tabla
+            cout << left << setw(5) << "No." 
+                << setw(20) << "Nombre" 
+                << setw(15) << "Tipo" 
+                << setw(10) << "Usos" << "\n";
+            cout << "---------------------------------------------------\n";
+
+            // Filas de la tabla
+            for(int i = 0; i < cantidad; i++) {
+                cout << left << setw(5) << i + 1 
+                    << setw(20) << implementos[i].nombre 
+                    << setw(15) << implementos[i].tipo 
+                    << setw(10) << implementos[i].usos << "\n";
+            }
+            cout << "---------------------------------------------------\n";
+        }
+
+
+
+        void eliminarImplemento() {
+            mostrarImplementos();
+            cout<<"Selecciona el numero del implemento para eliminar: ";
+            int sel= leerOpcion();
+            if(sel<1 || sel>cantidad) {
+                cout << "Opcion incorrecta.\n";
+                return;
+            }
+            for(int i=sel - 1; i<cantidad-1; i++) {
+                implementos[i]= implementos[i+1];
+            }
+            cantidad--;
+            cout<<"Implemento eliminado.\n";
+        }
+
+        void modificarImplemento() {
+            mostrarImplementos();
+            cout<<"Selecciona el numero del implemento a modificar: ";
+            int sel= leerOpcion();
+            if(sel<1 || sel>cantidad) {
+                cout<<"Opcion incorrecta.\n";
+                return;
+            }
+            implemento& imp= implementos[sel-1];
+            cin.ignore();
+            cout<<"Nuevo nombre: ";
+            getline(cin, imp.nombre);
+
+            string tipo;
+            while(true) {
+                cout<<"Nuevo tipo (atacar/defender/curar): ";
+                getline(cin, tipo);
+                if(tipo=="atacar" || tipo=="defender" || tipo=="curar") {
+                    imp.tipo= tipo;
+                    break;
+                } else{
+                    cout<<"Tipo invalido. Por favor escribe atacar, defender o curar.\n";
+                }
+            }
+
+            cout<<"Nuevos usos: ";
+            cin>>imp.usos;
+
+            cout<<"Nueva fortaleza: ";
+            cin>>imp.fortaleza;
+
+            if(imp.tipo=="atacar") {
+                cout<<"Nuevo ataque: ";
+                cin>>imp.valorAtk;
+                imp.valorDef= 0;
+                imp.valorHeal= 0;
+            } else if(imp.tipo=="defender") {
+                cout<<"Nueva defensa: ";
+                cin>>imp.valorDef;
+                imp.valorAtk= 0;
+                imp.valorHeal= 0;
+            } else if(imp.tipo=="curar") {
+                cout<<"Nueva curacion: ";
+                cin>>imp.valorHeal;
+                imp.valorAtk= 0;
+                imp.valorDef= 0;
+            }
+            cout<<"Implemento modificado.\n";
+        }
+};
+
+//Lista de las Especies
 class listaEspecies {
     private:
         nodoEspecie* cabeza;
@@ -211,25 +487,33 @@ class listaEspecies {
             cout<<"Especie '"<<nuevaEspecie.nombre<<"' agregada."<<endl;
         }
     
-        void mostrarEspecie() {
+        void mostrarEspecies() {
             if (cabeza == nullptr) {
-                cout<<"No hay especies registradas."<<endl;
+                cout << "No hay especies registradas." << endl;
                 return;
             }
-
+            // Encabezado de la tabla
+            cout << left << setw(5) << "No." 
+                << setw(20) << "Especie" 
+                << setw(15) << "Fortaleza" 
+                << setw(10) << "Ataque" 
+                << setw(10) << "Salud" 
+                << setw(10) << "Rapidez" << endl;
+            cout << "-------------------------------------------------------------------\n";
             int cont = 0;
-
             nodoEspecie* temp = cabeza;
             while (temp != nullptr) {
                 cont += 1;
-                cout<<cont<<". "<<"Especie: "<<temp->dato.nombre<<endl;
-                cout<<"Forzaleza: "<<temp->dato.fortaleza<<endl;
-                cout<<"Ataque: "<<temp->dato.ataque<<endl;
-                cout<<"Salud: "<<temp->dato.salud<<endl;
-                cout<<"Rapidez: "<<temp->dato.rapidez<<endl<<endl;
+                cout << left << setw(5) << cont 
+                    << setw(20) << temp->dato.nombre 
+                    << setw(15) << temp->dato.fortaleza 
+                    << setw(10) << temp->dato.ataque 
+                    << setw(10) << temp->dato.salud 
+                    << setw(10) << temp->dato.rapidez << endl;
                 temp = temp->siguiente;
             }
-            cout<<"Ataque=0 Heroe, Fortaleza=0 Orco"<<endl;
+            cout << "-------------------------------------------------------------------\n";
+            cout << "Ataque=0 Heroe, Fortaleza=0 Orco" << endl;
         }
 
         nodoEspecie* obtenerCabeza() {
@@ -241,25 +525,27 @@ class listaEspecies {
                 cout << "No hay especies registradas.\n";
                 return nullptr;
             }
-
+            // Encabezado de la tabla
             cout << "\n=== Especies disponibles ===\n";
+            cout << left << setw(5) << "No." 
+                << setw(20) << "Especie" << endl;
+            cout << "-------------------------------------\n";
             nodoEspecie* temp = cabeza;
             int i = 1;
             while (temp) {
-                cout << i << ". " << temp->dato.nombre << endl;
+                cout << left << setw(5) << i 
+                    << setw(20) << temp->dato.nombre << endl;
                 temp = temp->siguiente;
                 i++;
             }
-
+            cout << "-------------------------------------\n";
             int seleccion;
             cout << "Selecciona el numero de la especie: ";
             seleccion = leerOpcion();
-
             temp = cabeza;
             for (int j = 1; temp && j < seleccion; j++) {
                 temp = temp->siguiente;
             }
-
             if (!temp) {
                 cout << "No es valido su numero.\n";
                 return nullptr;
@@ -267,26 +553,12 @@ class listaEspecies {
             return temp;
         }
 
-        void eliminarEspecie() {
-            nodoEspecie* seleccionada = seleccionarEspeciePorIndice();
-            if (!seleccionada) return;
-
-            nodoEspecie* actual = cabeza;
-            nodoEspecie* anterior = nullptr;
-
-            while (actual) {
-                if (actual == seleccionada) {
-                    if (!anterior) cabeza = actual->siguiente;
-                    else anterior->siguiente = actual->siguiente;
-                    delete actual;
-                    cout << "Especie eliminada."<<endl;
-                    return;
-                }
-                anterior = actual;
-                actual = actual->siguiente;
+        void eliminarPrimeraEspecie() {
+            if (cabeza) {
+                nodoEspecie* temp = cabeza;
+                cabeza = cabeza->siguiente;
+                delete temp;
             }
-
-            cout << "No se encontro la especie."<<endl;
         }
 
         void modificarEspecie() {
@@ -327,27 +599,138 @@ class listaEspecies {
         }
 };
 
+//Lista de los Personajes
 class listaPersonajes {
     private:
         nodoPersonaje* cabeza;
+        listaEspecies* lista_especies;
+        listaImplementos* lista_implementos;
+
     public:
-        listaPersonajes() {
-            cabeza = nullptr;
-        }
+        listaPersonajes(listaEspecies& especies) : cabeza(nullptr), lista_especies(&especies) {}
+
         ~listaPersonajes() {
             limpieza();
         }
 
-        void limpieza(){
+        void limpieza() {
             nodoPersonaje* actual = cabeza;
-            while(actual!=nullptr) {
-                nodoPersonaje* siguiente= actual->siguiente;
+            while(actual != nullptr) {
+                nodoPersonaje* siguiente = actual->siguiente;
                 delete actual;
-                actual=siguiente;
+                actual = siguiente;
             }
-            cabeza= nullptr;
+            cabeza = nullptr;
         }
 
+        nodoPersonaje* obtenerCabeza() {
+            return cabeza;
+        }
+
+        void agregarPersonaje(string nombre_especie, string nombre_personaje) {
+            nodoEspecie* especie_ptr = buscarEspecie(nombre_especie);
+            if (!especie_ptr) {
+                cout<<"Error: Especie '"<<nombre_especie<<"' no encontrada."<<endl;
+                return;
+            }
+
+            personaje nuevo;
+            nuevo.nombre = nombre_personaje;
+            nuevo.especie = especie_ptr;
+
+            nodoPersonaje* nuevo_nodo = new nodoPersonaje{nuevo, nullptr};
+
+            if (cabeza == nullptr) {
+                cabeza = nuevo_nodo;
+            } else {
+                nodoPersonaje* temp = cabeza;
+                while (temp->siguiente != nullptr) {
+                    temp = temp->siguiente;
+                }
+                temp->siguiente = nuevo_nodo;
+            }
+        }
+
+        void agregarPersonaje() {
+            personaje nuevo;
+
+            while (true) {
+                cout<<"Ingresa el nombre del personaje: ";
+                cin>>nuevo.nombre;
+
+                bool valido = true;
+                for (char c : nuevo.nombre) {
+                    if (!isalpha(c)) {
+                        valido = false;
+                        break;
+                    }
+                }
+
+                if (valido) break;
+                cout<<"Nombre invalido, solo letras. Intenta denuevo."<<endl;
+            }
+
+            cout<<"Selecciona una especie para el personaje"<<endl;
+            cout<<"_________________________________"<<endl;
+            lista_especies->mostrarEspecies();
+
+            int op;
+            while (true) {
+                cout<<"Ingresa el numero de la especie: ";
+                cin>>op;
+
+                if (cin.fail()) {
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout<<"Numero invalido. Ingresa un numero."<<endl;
+                    continue;
+                }
+
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+                nodoEspecie* tempEsp = lista_especies->obtenerCabeza();
+                int cont = 1;
+                while (tempEsp != nullptr && cont < op) {
+                    tempEsp = tempEsp->siguiente;
+                    cont++;
+                }
+
+                if (tempEsp == nullptr) {
+                    cout<<"No existe una especie con ese numero. Intenta denuevo."<<endl;
+                    continue;
+                }
+
+                nuevo.especie = tempEsp;
+                break;
+                }
+
+            nodoPersonaje* nuevo_nodo = new nodoPersonaje{nuevo, nullptr};
+
+            if (cabeza == nullptr) {
+                cabeza = nuevo_nodo;
+            } else {
+                nodoPersonaje* temp = cabeza;
+                while (temp->siguiente != nullptr) {
+                    temp = temp->siguiente;
+                }
+                temp->siguiente = nuevo_nodo;
+            }        
+            cout<<"Personaje '"<<nuevo.nombre <<"' agregado exitosamente."<<endl;
+            }
+
+    private:
+        nodoEspecie* buscarEspecie(string nombre) {
+            nodoEspecie* temp = lista_especies->obtenerCabeza();
+            while (temp != nullptr) {
+                if (temp->dato.nombre == nombre) {
+                    return temp;
+                }
+                temp = temp->siguiente;
+            }
+            return nullptr;
+        }
+
+    public:
 
         nodoPersonaje* obtenerPjInd(int ind) { //obtener indice del personaje
             nodoPersonaje* temp = cabeza;
@@ -363,114 +746,59 @@ class listaPersonajes {
             return nullptr;
         }
 
-        void agregarPersonaje(string especie, string nombre) {
-            personaje nuevoPersonaje;
-            nuevoPersonaje.nombre = nombre;
-            nuevoPersonaje.especie = especie;
-
-            nodoPersonaje* nuevoNodo = new nodoPersonaje;
-            nuevoNodo->dato = nuevoPersonaje;
-            nuevoNodo->siguiente = nullptr;
-
-            if (cabeza==nullptr) {
-                cabeza = nuevoNodo;
-            } else {
-                nodoPersonaje* temp = cabeza;
-                while (temp->siguiente!=nullptr) {
-                    temp = temp->siguiente;
-                }
-                temp->siguiente = nuevoNodo;
-            }
-        }
-        
-        void agregarPersonaje(listaEspecies& lista) {
-            personaje nuevoPersonaje;
-
-            //ingreso del nombre y vaidacion
-            while (true) {
-                cout<<"Ingrese el nombre del personaje: ";
-                cin>>nuevoPersonaje.nombre;
-
-                //esto valida q el nombre tenga letras
-                bool valido = true;
-                for (char c : nuevoPersonaje.nombre) {
-                    if (!isalpha(c)) {
-                        valido = false;
-                        break;
-                    }
-                }
-
-                if (valido) {
-                    break; 
-                } else {
-                    cout<<"Nombre no valido. Solo letras. Intenta de nuevo." << endl;
-                    }
-            }
-
-            cout<<"Selecciona una especie para el personaje"<<endl;
-            cout<<"_________________________________"<<endl;
-            lista.mostrarEspecie();
-
-            int op; 
-            while (true) {
-                cout << "Ingresa el numero de la especie: ";
-                cin >> op;
-
-                if (cin.fail()) {
-                    cin.clear();
-                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
-                    cout << "Numero no valido. Por favor ingresa un numero."<<endl;
-                    continue;
-                }
-
-                cin.ignore(numeric_limits<streamsize>::max(), '\n');
-
-                nodoEspecie* tempEsp = lista.obtenerCabeza();
-                int cont = 1;
-                while (tempEsp != nullptr && cont < op) {
-                    tempEsp = tempEsp->siguiente;
-                    cont++;
-                }
-
-                if (tempEsp == nullptr || tempEsp->dato.tipo != "Heroe") {
-                    cout << "No existe una especie con ese numero. Intenta de nuevo."<<endl;
-                    continue;
-                }
-
-                nuevoPersonaje.especie = tempEsp->dato.nombre;
-                break;
-            }
-
-            nodoPersonaje* nuevoNodo = new nodoPersonaje;
-            nuevoNodo->dato = nuevoPersonaje;
-            nuevoNodo->siguiente = nullptr;
-
-            if (cabeza==nullptr) {
-                cabeza = nuevoNodo;
-            } else {
-                nodoPersonaje* temp = cabeza;
-                while (temp->siguiente != nullptr) {
-                temp = temp->siguiente;
-                }
-                temp->siguiente = nuevoNodo;
-            }
-           cout<<"Personaje '"<<nuevoPersonaje.nombre<<"' agregado."<<endl;
-        }
-
-        void mostrarPersonaje() {
+        void mostrarPersonajes() {
             if (cabeza == nullptr) {
-                cout<<"No hay personajes registrados."<<endl;
+                cout << "No hay personajes registrados." << endl;
                 return;
-                }
-
+            }
+            // Encabezado de la tabla
+            cout << left << setw(5) << "No." 
+                << setw(20) << "Nombre" 
+                << setw(20) << "Especie" << endl;
+            cout << "---------------------------------------------------\n";
             nodoPersonaje* temp = cabeza;
             int cont = 1;
             while (temp != nullptr) {
-                cout<<cont<<". Nombre: "<<temp->dato.nombre<<endl;
-                cout<<"Especie: "<<temp->dato.especie<<endl<<endl;
+                cout << left << setw(5) << cont 
+                    << setw(20) << temp->dato.nombre 
+                    << setw(20) << temp->dato.especie->dato.nombre << endl;
                 temp = temp->siguiente;
                 cont++;
             }
+            cout << "---------------------------------------------------\n";
+        }
+
+        void mostrarPersonajesConMochilas() {
+            if (cabeza == nullptr) {
+                cout << "No hay personajes registrados." << endl;
+                return;
+            }
+            // Encabezado de la tabla
+            cout << left << setw(5) << "No." 
+                << setw(20) << "Nombre" 
+                << setw(30) << "Mochila" << endl;
+            cout << "-------------------------------------------------------------\n";
+            nodoPersonaje* temp = cabeza;
+            int cont = 1;
+            while (temp != nullptr) {
+                cout << left << setw(5) << cont 
+                    << setw(20) << temp->dato.nombre 
+                    << setw(30);
+                if (temp->dato.mochila.numImplementos == 0) {
+                    cout << "Vacía";
+                } else {
+                    for (int i = 0; i < temp->dato.mochila.numImplementos; i++) {
+                        cout << "'" << temp->dato.mochila.implementos[i]->nombre << "'";
+                        if (i < temp->dato.mochila.numImplementos - 1) {
+                            cout << ", ";
+                        }
+                    }
+                }
+                cout << endl;
+                temp = temp->siguiente;
+                cont++;
+            }
+            cout << "-------------------------------------------------------------\n";
         }
 
         nodoPersonaje* seleccionarPersonajePorIndice() {
@@ -478,82 +806,82 @@ class listaPersonajes {
                 cout << "No hay personajes registrados.\n";
                 return nullptr;
             }
-
+            // Encabezado de la tabla
             cout << "\n=== Personajes disponibles ===\n";
+            cout << left << setw(5) << "No." 
+                << setw(20) << "Nombre" << endl;
+            cout << "-------------------------------------\n";
             nodoPersonaje* temp = cabeza;
             int i = 1;
             while (temp) {
-                cout << i << ". " << temp->dato.nombre << endl;
+                cout << left << setw(5) << i 
+                    << setw(20) << temp->dato.nombre << endl;
                 temp = temp->siguiente;
                 i++;
             }
-
+            cout << "-------------------------------------\n";
             int seleccion;
             cout << "Selecciona el numero del personaje: ";
             seleccion = leerOpcion();
-
             temp = cabeza;
             for (int j = 1; temp && j < seleccion; j++) {
                 temp = temp->siguiente;
             }
-
             if (!temp) {
                 cout << "No es valido su numero.\n";
                 return nullptr;
             }
-
             return temp;
         }   
 
         void eliminarPersonaje() {
             nodoPersonaje* seleccionada = seleccionarPersonajePorIndice();
             if (!seleccionada) return;
-
             nodoPersonaje* actual = cabeza;
             nodoPersonaje* anterior = nullptr;
-
             while (actual) {
                 if (actual == seleccionada) {
-                    if (!anterior) cabeza = actual->siguiente;
-                    else anterior->siguiente = actual->siguiente;
+                    string nombreEliminado = actual->dato.nombre;
+                    if (!anterior) {
+                        cabeza = actual->siguiente;
+                    } else {
+                        anterior->siguiente = actual->siguiente;
+                    }
                     delete actual;
-                    cout << "Personaje '"<< actual->dato.nombre <<"' eliminado."<<endl;
+                    cout << "Personaje '" << nombreEliminado << "' eliminado." << endl;
                     return;
                 }
                 anterior = actual;
                 actual = actual->siguiente;
             }
-
-            cout << "Personaje no encontrado."<<endl;
+            cout << "Personaje no encontrado." << endl;
         }
 
         void modificarPersonaje(listaEspecies& lista) {
             nodoPersonaje* seleccionada = seleccionarPersonajePorIndice();
             if (!seleccionada) return;
 
-            personaje& esp = seleccionada->dato;
+            personaje& pj = seleccionada->dato;
             while (true) {
-                cout<<"Ingrese el nombre del personaje: ";
-                cin>>esp.nombre;
+                cout << "Ingrese el nombre del personaje: ";
+                cin >> pj.nombre;
 
-                //esto valida q el nombre tenga letras
                 bool valido = true;
-                for (char c : esp.nombre) {
+                for (char c : pj.nombre) {
                     if (!isalpha(c)) {
                         valido = false;
                         break;
                     }
                 }
-
                 if (valido) {
                     break; 
                 } else {
-                    cout<<"Nombre no valido. Solo letras. Intenta de nuevo." << endl;
-                    }
+                    cout << "Nombre invalido, solo letras. Intenta denuevo." << endl;
+                }
             }
 
-            cout<<"\n --Lista de Especies--\n";
-            lista.mostrarEspecie();
+            cout << "\n__ Lista de Especies __\n";
+            lista.mostrarEspecies();
 
             int op; 
             while (true) {
@@ -563,7 +891,7 @@ class listaPersonajes {
                 if (cin.fail()) {
                     cin.clear();
                     cin.ignore(numeric_limits<streamsize>::max(), '\n');
-                    cout << "Numero no valido. Por favor ingresa un numero."<<endl;
+                    cout << "Numero invalido, ingresa un numero." << endl;
                     continue;
                 }
 
@@ -575,19 +903,154 @@ class listaPersonajes {
                     tempEsp = tempEsp->siguiente;
                     cont++;
                 }
-
                 if (tempEsp == nullptr) {
-                    cout<<"No hay especies con ese numero, intenta denuevo."<<endl;   
-                 continue;
+                    cout << "No hay especies con ese numero, intenta denuevo." << endl;   
+                    continue;
                 }
-
-                esp.especie = tempEsp->dato.nombre;
+                pj.especie = tempEsp;
                 break;
             }
-            cout << "Personaje modificado."<<endl;
-    }
+            cout << "Personaje modificado." << endl;
+        }
+
+        void manejarMochila(listaImplementos& listaImplementos) {
+            mostrarPersonajes();
+            if (!cabeza) {
+                cout << "No hay personajes disponibles.\n";
+                return;
+            }
+
+            cout << "Selecciona el número del personaje: ";
+            int seleccion = leerOpcion();
+            nodoPersonaje* personaje = obtenerPjInd(seleccion);
+            if (!personaje) {
+                cout << "Selección inválida.\n";
+                return;
+            }
+
+            int opcion;
+            do {
+                cout << "\n--- Mochila de " << personaje->dato.nombre << " ---\n";
+                personaje->dato.mochila.mostrarMochila();
+                cout << "\n1. Agregar implemento\n";
+                cout << "2. Eliminar implemento\n";
+                cout << "3. Volver\n";
+                cout << "Selecciona una opción: ";
+                opcion = leerOpcion();
+
+                switch (opcion) {
+                    case 1:
+                        listaImplementos.mostrarImplementos();
+                        if (listaImplementos.obtenerCantidad() > 0) {
+                            cout << "Selecciona el implemento a agregar: ";
+                            int impSel = leerOpcion();
+                            if (impSel > 0 && impSel <= listaImplementos.obtenerCantidad()) {
+                                implemento* imp = listaImplementos.obtenerImplemento(impSel-1);
+                                personaje->dato.mochila.agregarImplementoAMochila(imp);
+                            } else {
+                                cout << "Selección inválida.\n";
+                            }
+                        }
+                        break;
+                    case 2:
+                        if (personaje->dato.mochila.numImplementos > 0) {
+                            cout << "Selecciona el implemento a eliminar: ";
+                            int impSel = leerOpcion();
+                            if (impSel > 0 && impSel <= personaje->dato.mochila.numImplementos) {
+                                personaje->dato.mochila.eliminarImplementoEnMochila(impSel-1);
+                            } else {
+                                cout << "Selección inválida.\n";
+                            }
+                        }
+                        break;
+                    case 3:
+                        break;
+                    default:
+                        cout << "Opción inválida.\n";
+                }
+            } while (opcion != 3);
+        }
 };
 
+//Funcion para eliminar especies (para evitar generar mas dependencias circulares entre las clases listaEspecies y listaPersonajes)
+void eliminarEspecie(listaEspecies& especies, listaPersonajes& personajes) {
+    if (especies.obtenerCabeza() == nullptr) {
+        cout<<"No hay especies registradas para eliminar."<<endl;
+        return;
+    }
+
+    cout<<"\n___ Especies disponibles ___"<<endl;
+    especies.mostrarEspecies();
+
+    nodoEspecie* especieSeleccionada = especies.seleccionarEspeciePorIndice();
+    if (!especieSeleccionada) {
+        return;
+    }
+
+    bool especieEnUso = false;
+    nodoPersonaje* personajeActual = personajes.obtenerCabeza();
+    while (personajeActual) {
+        if (personajeActual->dato.especie == especieSeleccionada) {
+            especieEnUso = true;
+            break;
+        }
+        personajeActual = personajeActual->siguiente;
+    }
+
+    if (especieEnUso) {
+        cout<<"No se puede eliminar la especie '"<<especieSeleccionada->dato.nombre<<"' porque hay personajes que la utilizan."<<endl;
+    } else {
+        string nombreEspecie = especieSeleccionada->dato.nombre;
+        nodoEspecie* actual = especies.obtenerCabeza();
+        nodoEspecie* anterior = nullptr;
+        bool eliminado = false;
+
+        while (actual && !eliminado) {
+            if (actual == especieSeleccionada) {
+                if (!anterior) {
+                    especies.eliminarPrimeraEspecie();
+                } else {
+                    anterior->siguiente = actual->siguiente;
+                    delete actual;
+                }
+                eliminado = true;
+            }
+            anterior = actual;
+            actual = actual->siguiente;
+        }
+        if (eliminado) {
+            cout<<"Especie '"<<nombreEspecie<<"' eliminada correctamente."<<endl;
+        } else {
+            cout<<"Error: No se pudo eliminar la especie."<<endl;
+        }
+    }
+}
+
+//Estructura de los Equipos
+struct equipo {
+    string nombre;
+    nodoPersonaje* personajes[4];
+    int numPjs; //Numero de personajes
+};
+struct nodoEquipo {
+    equipo dato;
+    nodoEquipo* siguiente;
+};
+
+//Estructura de las Salas
+struct Adyacencia {
+    int idSala;
+    int distancia;
+    Adyacencia* siguiente;
+};
+struct Sala {
+    int id;
+    string nombre;
+    Adyacencia* adyacencias;
+    Sala* siguiente;
+};
+
+//Lista de los Equipos
 class listaEquipos {
     private:
         nodoEquipo* cabeza;
@@ -618,7 +1081,7 @@ class listaEquipos {
 
             while(nuevoEquipo.numPjs<4) {
                 cout<<endl<<"Selecciona un personaje para el equipo (por numero)"<<endl;
-                listaPersonajes.mostrarPersonaje();
+                listaPersonajes.mostrarPersonajes();
 
                 int op;
                 cout<<"Ingresa el numero del personaje (0 para terminar): ";
@@ -672,27 +1135,41 @@ class listaEquipos {
             cout<<"Equipo '"<<nuevoEquipo.nombre<<"' creado.";
         }
 
-        void mostrarEquipo() {
+        void mostrarEquipos() {
             if (cabeza == nullptr) {
-                cout<<"No hay equipos registrados."<<endl;
+                cout << "No hay equipos registrados." << endl;
                 return;
-                }
+            }
+
+            cout << "\n=== Equipos Registrados ===\n";
+            cout << left << setw(5) << "No." 
+                << setw(30) << "Nombre del Equipo" 
+                << setw(25) << "Personajes" << endl;
+            cout << string(60, '-') << endl;
 
             nodoEquipo* temp = cabeza;
             int cont = 1;
             while (temp != nullptr) {
-                cout<<"Equipo #"<<cont++<<": "<<temp->dato.nombre<<endl;
-                cout<<"Personajes del equipo: "<<endl;
+                cout << left << setw(5) << cont++ 
+                    << setw(30) << temp->dato.nombre 
+                    << setw(25);
 
+                ostringstream personajesList;
                 for (int i = 0; i < temp->dato.numPjs; i++) {
                     nodoPersonaje* personaje = temp->dato.personajes[i];
-                    if (personaje!=nullptr) {
-                        cout<<" -"<<personaje->dato.nombre<<endl;
+                    if (personaje != nullptr) {
+                        personajesList << personaje->dato.nombre;
+                        if (i < temp->dato.numPjs - 1) {
+                            personajesList << ", ";
+                        }
                     }
                 }
-                cout<<"______________"<<endl;
+                cout << personajesList.str();
+                cout << endl;
+
                 temp = temp->siguiente;
             }
+            cout << string(60, '-') << endl;
         }
 
         nodoEquipo* seleccionarEquipoPorIndice() {
@@ -700,30 +1177,29 @@ class listaEquipos {
                 cout << "No hay equipos registrados.\n";
                 return nullptr;
             }
-
             cout << "\n=== Equipos disponibles ===\n";
+            cout << left << setw(5) << "No." 
+                << setw(30) << "Nombre del Equipo" << endl;
+            cout << string(40, '-') << endl;
             nodoEquipo* temp = cabeza;
             int i = 1;
             while (temp) {
-                cout << i << ". " << temp->dato.nombre << endl;
+                cout << left << setw(5) << i++ 
+                    << setw(30) << temp->dato.nombre << endl;
                 temp = temp->siguiente;
-                i++;
             }
-
+            cout << string(40, '-') << endl;
             int seleccion;
             cout << "Selecciona el numero del equipo: ";
             seleccion = leerOpcion();
-
             temp = cabeza;
             for (int j = 1; temp && j < seleccion; j++) {
                 temp = temp->siguiente;
             }
-
             if (!temp) {
-                cout << "No es valido su numero.\n";
+                cout << "No es válido su número.\n";
                 return nullptr;
             }
-
             return temp;
         }
 
@@ -750,200 +1226,446 @@ class listaEquipos {
     
 };
 
-class listaImplementos {
+//Lista de las Salas
+class listaSalas {
 private:
-    implemento* implementos;
-    int capacidad;
-    int cantidad;
+    Sala* cabeza;
 
 public:
-    listaImplementos() {
-        capacidad= 10;
-        cantidad= 0;
-        implementos= new implemento[capacidad];
+    listaSalas() {
+        cabeza = nullptr;
     }
 
-    ~listaImplementos() {
-        delete[] implementos;
+    ~listaSalas() {
+        limpieza();
     }
 
-    void agregarImplemento(string nombre, string tipo, int usos, int fortaleza, int valorAtk, int valorDef, int valorHeal) {
-        if(cantidad== capacidad) {
-            capacidad*= 2;
-            implemento* nuevoArray= new implemento[capacidad];
-            for(int i= 0; i<cantidad; i++) {
-                nuevoArray[i]= implementos[i];
+    void limpieza() {
+        while (cabeza != nullptr) {
+            Sala* temp = cabeza;
+            cabeza = cabeza->siguiente;
+
+            Adyacencia* adyacenteActual = temp->adyacencias;
+            while (adyacenteActual != nullptr) {
+                Adyacencia* tempAdyacente = adyacenteActual;
+                adyacenteActual = adyacenteActual->siguiente;
+                delete tempAdyacente;
             }
-            delete[] implementos;
-            implementos= nuevoArray;
+
+            delete temp;
         }
-
-        implemento nuevo;
-        nuevo.nombre= nombre;
-        nuevo.tipo= tipo;
-        nuevo.usos= usos;
-        nuevo.fortaleza= fortaleza;
-
-        if(nuevo.tipo=="atacar") {
-            nuevo.valorAtk= valorAtk;
-            nuevo.valorDef= 0;
-            nuevo.valorHeal= 0;
-        } else if(nuevo.tipo=="defender") {
-            nuevo.valorDef= valorDef;
-            nuevo.valorAtk= 0;
-            nuevo.valorHeal= 0;
-        } else if(nuevo.tipo=="curar") {
-            nuevo.valorHeal= valorHeal;
-            nuevo.valorAtk= 0;
-            nuevo.valorDef= 0;
-        }
-
-        implementos[cantidad++]= nuevo;
     }
 
-    void agregarImplemento() {
-        if(cantidad== capacidad) {
-            capacidad*= 2;
-            implemento* nuevoArray= new implemento[capacidad];
-            for(int i=0; i<cantidad; i++) {
-                nuevoArray[i]= implementos[i];
+    int convertirAEntero(const string& str) {
+        int resultado = 0;
+        bool encontradoDigito = false;
+
+        for (char c : str) {
+            if (isspace(c)) {
+                continue;
             }
-            delete[] implementos;
-            implementos= nuevoArray;
+            if (isdigit(c)) {
+                resultado = resultado * 10 + (c - '0');
+                encontradoDigito = true;
+            } else {
+                cout<<"Error: se encontre un caracter que no es numero: "<<c<< endl;
+                return -1;
+            }
         }
 
-        implemento nuevo;
-        cin.ignore();
-        cout<<"Nombre del implemento: ";
-        getline(cin, nuevo.nombre);
+        if (!encontradoDigito) {
+            cout<<"Error: no se encontraron digitos."<<endl;
+            return -1;
+        }
 
-        string tipo;
-        while(true) {
-            cout<<"Tipo (atacar / defender / curar): ";
-            getline(cin, tipo);
-            if(tipo=="atacar" || tipo=="defender" || tipo=="curar") {
-                nuevo.tipo = tipo;
+        return resultado;
+    }
+
+    void agregarSala(int id, const string& nombre, Adyacencia* adyacencias) {
+        Sala* nuevaSala = new Sala{id, nombre, adyacencias, cabeza};
+        cabeza = nuevaSala;
+    }
+
+    void agregarSala() {
+        mostrarSalas();
+
+        int id;
+        string nombre;
+
+        while (true) {
+            cout << "Ingresa el ID de la sala: ";
+            string input;
+            cin >> input;
+            id = convertirAEntero(input);
+
+            Sala* actual = cabeza;
+            bool idExistente = false;
+            while (actual != nullptr) {
+                if (actual->id == id) {
+                    idExistente = true;
+                    break;
+                }
+                actual = actual->siguiente;
+            }
+            if (idExistente) {
+                cout << "Error: Ya existe una sala con el ID " << id << ". Intenta con otro ID." << endl;
+            } else if (id != -1) {
                 break;
-            } else{
-                cout<<"El tipo no es valido. Por favor escribe atacar, defender o curar.\n";
             }
         }
 
-        cout<<"Usos: ";
-        while(!(cin>>nuevo.usos)) {
-            cout<<"Numero invalido. Ingresa un numero entero: ";
-            cin.clear(); cin.ignore(numeric_limits<streamsize>::max(), '\n');
-        }
+        while (true) {
+            cout<<"Ingresa el nombre de la sala: ";
+            cin.ignore();
+            getline(cin, nombre);
 
-        cout<<"Fortaleza: ";
-        while(!(cin>>nuevo.fortaleza)) {
-            cout<<"Cantidad invalida. Ingresa un numero entero: ";
-            cin.clear(); cin.ignore(numeric_limits<streamsize>::max(), '\n');
-        }
+            bool valido = true;
+            for (char c : nombre) {
+                if (!isalpha(c) && c != ' ') {
+                    valido = false;
+                    break;
+                }
+            }
 
-        if(nuevo.tipo=="atacar") {
-            cout<<"Valor de ataque: ";
-            while (!(cin>>nuevo.valorAtk)) {
-                cout<<"Cantidad invalida. Ingresa un numero entero: ";
-                cin.clear(); cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            }
-        } else if(nuevo.tipo=="defender") {
-            cout<<"Valor de defensa: ";
-            while(!(cin>>nuevo.valorDef)) {
-                cout<<"Cantidad invalida. Ingresa un numero entero: ";
-                cin.clear(); cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            }
-        } else if(nuevo.tipo=="curar") {
-            cout<<"Valor de curacion: ";
-            while(!(cin>>nuevo.valorHeal)) {
-                cout<<"Cantidad invalida. Ingresa un numero decimal: ";
-                cin.clear(); cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            if (valido) {
+                break; 
+            } else {
+                cout<<"Nombre no valido, solo letras y espacios. Intenta denuevo."<<endl;
             }
         }
 
-        implementos[cantidad++]= nuevo;
-        cout<<"Implemento agregado.\n";
+        Adyacencia* adyacencias = nullptr;
+        Adyacencia* ultimoAdyacente = nullptr;
+        char continuar;
+
+        do {
+            int idAdyacente, distancia;
+
+            while (true) {
+                mostrarSalas();
+                cout<<"Ingresa el ID de la sala adyacente (o -1 para terminar): ";
+                cin>>idAdyacente;
+                if (idAdyacente == -1) break;
+
+                while (true) {
+                    cout<<"Ingresa la distancia a la sala adyacente: ";
+                    string input;
+                    cin>>input;
+                    distancia = convertirAEntero(input);
+                    if (distancia != -1) break;
+                }
+
+                Adyacencia* nuevoAdyacente = new Adyacencia{idAdyacente, distancia, nullptr};
+                if (adyacencias == nullptr) {
+                    adyacencias = nuevoAdyacente;
+                } else {
+                    ultimoAdyacente->siguiente = nuevoAdyacente;
+                }
+                ultimoAdyacente = nuevoAdyacente;
+                
+                cout<<"Adyacencia añadida."<<endl;
+            }
+
+            cout<<"Quiere agregar otra adyacencia? (s/n): ";
+            cin>>continuar;
+        } while (continuar == 's' || continuar == 'S');
+
+        agregarSala(id, nombre, adyacencias);
+        cout<<"Sala '"<<nombre<<"' agregada."<<endl;
     }
 
-    void mostrarImplemento() {
-        if(cantidad == 0) {
-            cout<<"No hay implementos registrados.\n";
-            cout<<"__________________________\n";
-            return;
-        }
-        for(int i=0; i<cantidad; i++) {
-            cout<<i+1<<". "<<implementos[i].nombre<<" ("<<implementos[i].tipo<<") - Usos: "<<implementos[i].usos<<"\n";
-        }
+    void eliminarSala() {
+        mostrarSalas();
         cout<<"__________________________\n";
-    }
 
-    void eliminarImplemento() {
-        mostrarImplemento();
-        cout<<"Selecciona el numero del implemento para eliminar: ";
-        int sel= leerOpcion();
-        if(sel<1 || sel>cantidad) {
-            cout << "Opcion incorrecta.\n";
+        int id;
+        while (true) {
+            cout<<"Ingresa el ID de la sala a eliminar: ";
+            string input;
+            cin>>input;
+            id = convertirAEntero(input);
+            if (id != -1) break;
+        }
+
+        Sala* actual = cabeza;
+        Sala* anterior = nullptr;
+
+        while (actual != nullptr && actual->id != id) {
+            anterior = actual;
+            actual = actual->siguiente;
+        }
+
+        if (actual == nullptr) {
+            cout<<"Sala no encontrada,"<<endl;
             return;
         }
-        for(int i=sel - 1; i<cantidad-1; i++) {
-            implementos[i]= implementos[i+1];
+
+        if (anterior == nullptr) {
+            cabeza = actual->siguiente;
+        } else {
+            anterior->siguiente = actual->siguiente;
         }
-        cantidad--;
-        cout<<"Implemento eliminado.\n";
+
+        Adyacencia* adyacenteActual = actual->adyacencias;
+        while (adyacenteActual != nullptr) {
+            Adyacencia* temp = adyacenteActual;
+            adyacenteActual = adyacenteActual->siguiente;
+            delete temp;
+        }
+
+        delete actual;
+        cout<<"Sala eliminada."<<endl;
     }
 
-    void modificarImplemento() {
-        mostrarImplemento();
-        cout<<"Selecciona el numero del implemento a modificar: ";
-        int sel= leerOpcion();
-        if(sel<1 || sel>cantidad) {
-            cout<<"Opcion incorrecta.\n";
+    void modificarSala() {
+    mostrarSalas();
+        cout<<"__________________________\n";
+
+        int id;
+        while (true) {
+            cout<<"Ingresa el ID de la sala a modificar: ";
+            string input;
+            cin>>input;
+            id = convertirAEntero(input);
+            if (id != -1) break;
+        }
+
+        Sala* actual = cabeza;
+        while (actual != nullptr && actual->id != id) {
+            actual = actual->siguiente;
+        }
+
+        if (actual == nullptr) {
+            cout<<"Sala no encontrada."<<endl;
             return;
         }
-        implemento& imp= implementos[sel-1];
-        cin.ignore();
-        cout<<"Nuevo nombre: ";
-        getline(cin, imp.nombre);
 
-        string tipo;
-        while(true) {
-            cout<<"Nuevo tipo (atacar/defender/curar): ";
-            getline(cin, tipo);
-            if(tipo=="atacar" || tipo=="defender" || tipo=="curar") {
-                imp.tipo= tipo;
-                break;
-            } else{
-                cout<<"Tipo invalido. Por favor escribe atacar, defender o curar.\n";
+        string nuevoNombre;
+        while (true) {
+            cout<<"\nNombre actual: "<<actual->nombre<<endl;
+            cout<<"Ingresa el nuevo nombre de la sala: ";
+            cin.ignore();
+            getline(cin, nuevoNombre);
+
+            bool valido = true;
+            for (char c : nuevoNombre) {
+                if (!isalpha(c) && c != ' ') {
+                    valido = false;
+                    break;
+                }
+            }
+
+            if (valido) {
+                break; 
+            } else {
+                cout<<"Nombre no valido, solo letras y espacios. Intenta denuevo." << endl;
             }
         }
 
-        cout<<"Nuevos usos: ";
-        cin>>imp.usos;
+        Adyacencia* nuevasAdyacencias = nullptr;
+        Adyacencia* ultimoAdyacente = nullptr;
+        char continuar;
 
-        cout<<"Nueva fortaleza: ";
-        cin>>imp.fortaleza;
-
-        if(imp.tipo=="atacar") {
-            cout<<"Nuevo ataque: ";
-            cin>>imp.valorAtk;
-            imp.valorDef= 0;
-            imp.valorHeal= 0;
-        } else if(imp.tipo=="defender") {
-            cout<<"Nueva defensa: ";
-            cin>>imp.valorDef;
-            imp.valorAtk= 0;
-            imp.valorHeal= 0;
-        } else if(imp.tipo=="curar") {
-            cout<<"Nueva curacion: ";
-            cin>>imp.valorHeal;
-            imp.valorAtk= 0;
-            imp.valorDef= 0;
+        cout<<"\n___ Adyacencias Actuales ___"<<endl;
+        Adyacencia* adyacenteActual = actual->adyacencias;
+        while (adyacenteActual != nullptr) {
+            cout<<adyacenteActual->idSala<<":"<<adyacenteActual->distancia<<" ";
+            adyacenteActual = adyacenteActual->siguiente;
         }
-        cout<<"Implemento modificado.\n";
+        cout<<"\n__________________________\n";
+
+        do {
+            cout<<"Que quiere hacer con las adyacencias?"<<endl;
+            cout<<"1. Agregar nueva adyacencia"<<endl;
+            cout<<"2. Eliminar adyacencia existente"<<endl;
+            cout<<"3. Cambiar distancia de una adyacencia"<<endl;
+            cout<<"4. Terminar modificaciones"<<endl;
+            cout<<"Selecciona una opcion: ";
+            int opcion;
+            cin>>opcion;
+
+            switch (opcion) {
+                case 1: {
+                    int idAdyacente, distancia;
+
+                    while (true) {
+                        mostrarSalas();
+                        cout<<"Ingresa el ID de la nueva sala adyacente: ";
+                        cin>>idAdyacente;
+
+                        while (true) {
+                            cout<<"Ingresa la distancia a la nueva sala adyacente: ";
+                            string input;
+                            cin>>input;
+                            distancia = convertirAEntero(input);
+                            if (distancia != -1) break;
+                        }
+
+                        Adyacencia* nuevoAdyacente = new Adyacencia{idAdyacente, distancia, nullptr};
+                        if (nuevasAdyacencias == nullptr) {
+                            nuevasAdyacencias = nuevoAdyacente;
+                        } else {
+                            ultimoAdyacente->siguiente = nuevoAdyacente;
+                        }
+                        ultimoAdyacente = nuevoAdyacente;
+
+                        cout<<"Adyacencia añadida."<<endl;
+                        break;
+                    }
+                    break;
+                }
+                case 2: {
+                    int idAdyacente;
+                    cout<<"Ingresa el ID de la sala adyacente a eliminar: ";
+                    cin>>idAdyacente;
+
+                    Adyacencia* actualAdyacente = actual->adyacencias;
+                    Adyacencia* anteriorAdyacente = nullptr;
+
+                    while (actualAdyacente != nullptr && actualAdyacente->idSala != idAdyacente) {
+                        anteriorAdyacente = actualAdyacente;
+                        actualAdyacente = actualAdyacente->siguiente;
+                    }
+
+                    if (actualAdyacente == nullptr) {
+                        cout<<"Adyacencia no encontrada."<<endl;
+                    } else {
+                        if (anteriorAdyacente == nullptr) {
+                            actual->adyacencias = actualAdyacente->siguiente; // Eliminar el primer elemento
+                        } else {
+                            anteriorAdyacente->siguiente = actualAdyacente->siguiente; // Eliminar el elemento intermedio
+                        }
+                        delete actualAdyacente;
+                        cout<<"Adyacencia eliminada."<<endl;
+                    }
+                    break;
+                }
+                case 3: { // Cambiar distancia de una adyacencia
+                    int idAdyacente;
+                    cout<<"Ingresa el ID de la sala adyacente para cambiar su distancia: ";
+                    cin>>idAdyacente;
+
+                    Adyacencia* actualAdyacente = actual->adyacencias;
+
+                    while (actualAdyacente != nullptr && actualAdyacente->idSala != idAdyacente) {
+                        actualAdyacente = actualAdyacente->siguiente;
+                    }
+
+                    if (actualAdyacente == nullptr) {
+                        cout<<"Adyacencia no encontrada."<<endl;
+                    } else {
+                        int nuevaDistancia;
+                        while (true) {
+                            cout<<"Ingresa la nueva distancia para la adyacencia: ";
+                            string input;
+                            cin>>input;
+                            nuevaDistancia = convertirAEntero(input);
+                            if (nuevaDistancia != -1) break;
+                        }
+                        actualAdyacente->distancia = nuevaDistancia;
+                        cout<<"Distancia actualizada."<<endl;
+                    }
+                    break;
+                }
+                case 4:
+                    continuar = 'n';
+                    break;
+                default:
+                    cout<<"Opción no valida. Intenta denuevo"<<endl;
+            }
+        } while (continuar != 'n');
+        actual->nombre = nuevoNombre;
+        cout << "Sala modificada." << endl;
+    }
+
+
+    void mostrarSalas() {
+        if (cabeza == nullptr) {
+            cout << "No hay salas registradas." << endl;
+            return;
+        }
+        cout << "\n=== Salas Registradas ===\n";
+        cout << left << setw(5) << "ID" 
+            << setw(30) << "Nombre" 
+            << setw(50) << "Adyacencias" << endl;
+        cout << string(85, '-') << endl;
+        Sala* actual = cabeza;
+        while (actual != nullptr) {
+            cout << left << setw(5) << actual->id 
+                << setw(30) << actual->nombre 
+                << setw(50);
+            Adyacencia* adyacenteActual = actual->adyacencias;
+            if (adyacenteActual == nullptr) {
+                cout << "Ninguna"; 
+            } else {
+                while (adyacenteActual != nullptr) {
+                    cout << adyacenteActual->idSala << ":" << adyacenteActual->distancia << " ";
+                    adyacenteActual = adyacenteActual->siguiente;
+                }
+            }
+            cout << endl;
+            actual = actual->siguiente;
+        }
+        cout << string(85, '-') << endl; 
+    }
+
+    void leerArchivo(const string& nombreArchivo) {
+    ifstream archivo(nombreArchivo);
+    if (!archivo.is_open()) {
+        cout<<"Error al abrir el archivo."<<endl;
+        return;
+    }
+
+    string linea;
+    int cantidadSalas;
+    getline(archivo, linea);
+    cantidadSalas = convertirAEntero(linea); //Leer la cantidad de salas
+
+    while (getline(archivo, linea)) {
+        if (linea == "---") continue; //Separador entre registros
+
+        //Leer ID de la sala
+        int id = convertirAEntero(linea);
+        if (id == -1) return; // Salir si hay un error
+
+        getline(archivo, linea);// Leer nombre de la sala
+        string nombre = linea;
+
+        getline(archivo, linea); //Leer el separador "--"
+        getline(archivo, linea); //Leer adyacencias
+        Adyacencia* adyacencias = nullptr;
+        Adyacencia* ultimoAdyacente = nullptr;
+
+        if (!linea.empty()) {
+            stringstream ss(linea);
+            string adyacente;
+            while (getline(ss, adyacente, '|')) {
+                //Obtener ID y distancia
+                size_t pos = adyacente.find(':');
+                int idAdyacente = convertirAEntero(adyacente.substr(0, pos));
+                int distancia = convertirAEntero(adyacente.substr(pos + 1));
+
+                if (idAdyacente == -1 || distancia == -1) return; // Salir si hay un error
+
+                Adyacencia* nuevoAdyacente = new Adyacencia{idAdyacente, distancia, nullptr};
+                if (adyacencias == nullptr) {
+                    adyacencias = nuevoAdyacente;
+                } else {
+                    ultimoAdyacente->siguiente = nuevoAdyacente;
+                }
+                ultimoAdyacente = nuevoAdyacente;
+            }
+        }
+
+        agregarSala(id, nombre, adyacencias);
+        getline(archivo, linea); //Leer el separador "---"
+    }
+    archivo.close();
     }
 };
 
-void verSubMenuModificar(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, listaEquipos& listaEquipos, listaImplementos& listaImplementos) {
+//Funciones del subMenu
+void verSubMenuModificar(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, listaEquipos& listaEquipos, listaImplementos& listaImplementos, listaSalas& listaSalas) {
     int op;
     cout<<"\n-- Modificar Elemento --"<<endl;
     cout<<"1. Especie"<<endl;
@@ -973,26 +1695,28 @@ void verSubMenuModificar(listaEspecies& listaEspecies, listaPersonajes& listaPer
             listaImplementos.modificarImplemento();
             break;
         case 4:
-            cout<<"Ingresando a la modificacion de mochilas..."<<endl;
+            cout<<"Modificando Mochila..."<<endl;
+            cout<<"__________________"<<endl;
+            listaPersonajes.manejarMochila(listaImplementos);
             break;
         case 5:
-            cout<<"Ingresando a la modificacion de mapas..."<<endl;
+            cout<<"Modificando Sala..."<<endl;
+            cout<<"__________________"<<endl;
+            listaSalas.modificarSala();
             break;
         case 6:
             return;
     }
 } 
-
-void verSubMenuEliminar(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, listaEquipos& listaEquipos, listaImplementos& listaImplementos) {
+void verSubMenuEliminar(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, listaEquipos& listaEquipos, listaImplementos& listaImplementos, listaSalas& listaSalas) {
     int op;
     cout<<"\n-- Eliminar Elemento --"<<endl;
     cout<<"1. Especie"<<endl;
     cout<<"2. Personajes"<<endl;
     cout<<"3. Implementos"<<endl;
     cout<<"4. Equipos "<<endl;
-    cout<<"5. Mochilas"<<endl;
-    cout<<"6. Mapa"<<endl;
-    cout<<"7. Volver al menu principal"<<endl;
+    cout<<"5. Mapa"<<endl;
+    cout<<"6. Volver al menu principal"<<endl;
     cout<<"Seleccione una opcion: ";
     op=leerOpcion();
     cout<<"______________________"<<endl;
@@ -1002,7 +1726,7 @@ void verSubMenuEliminar(listaEspecies& listaEspecies, listaPersonajes& listaPers
         case 1:
             cout<<"Eliminando Especie..."<<endl;
             cout<<"__________________"<<endl;
-            listaEspecies.eliminarEspecie();
+            eliminarEspecie(listaEspecies, listaPersonajes);
             break;        
         case 2:
             cout<<"Eliminando Personaje..."<<endl;
@@ -1020,26 +1744,23 @@ void verSubMenuEliminar(listaEspecies& listaEspecies, listaPersonajes& listaPers
             listaEquipos.eliminarEquipo();
             break;
         case 5:
-            cout<<"Ingresando a la eliminacion de mochilas..."<<endl;
+            cout<<"Eliminando Sala..."<<endl;
+            cout<<"__________________"<<endl;
+            listaSalas.eliminarSala();
             break;
         case 6:
-            cout<<"Ingresando a la eliminacion de mapas..."<<endl;
-            break;
-        case 7:
             return;
     }
 } 
-
-void verSubMenuAgregar(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, listaEquipos& listaEquipos, listaImplementos& listaImplementos) {
+void verSubMenuAgregar(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, listaEquipos& listaEquipos, listaImplementos& listaImplementos, listaSalas& listaSalas) {
     int op;
     cout<<"\n-- Crear Elemento --"<<endl;
     cout<<"1. Especie"<<endl;
     cout<<"2. Personajes"<<endl;
     cout<<"3. Implementos"<<endl;
     cout<<"4. Equipos "<<endl;
-    cout<<"5. Mochilas"<<endl;
-    cout<<"6. Mapa"<<endl;
-    cout<<"7. Volver al menu principal"<<endl;
+    cout<<"5. Mapa"<<endl;
+    cout<<"6. Volver al menu principal"<<endl;
     cout<<"Seleccione una opcion: ";
     op=leerOpcion();
     cout<<"______________________"<<endl;
@@ -1054,7 +1775,7 @@ void verSubMenuAgregar(listaEspecies& listaEspecies, listaPersonajes& listaPerso
         case 2:
             cout<<"Creando Personaje..."<<endl;
             cout<<"__________________"<<endl;
-            listaPersonajes.agregarPersonaje(listaEspecies);
+            listaPersonajes.agregarPersonaje();
             break;
         case 3:
             cout<<"Creando Implemento..."<<endl;
@@ -1067,25 +1788,23 @@ void verSubMenuAgregar(listaEspecies& listaEspecies, listaPersonajes& listaPerso
             listaEquipos.agregarEquipo(listaPersonajes);
             break;
         case 5:
-            cout<<"Ingresando a la creacion de mochilas..."<<endl;
+            cout<<"Creando Sala..."<<endl;
+            cout<<"__________________"<<endl;
+            listaSalas.agregarSala();
             break;
         case 6:
-            cout<<"Ingresando a la creacion de mapas..."<<endl;
-            break;
-        case 7:
             return;
     }
 } 
-
-void verSubMenuInformacion(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, listaEquipos& listaEquipos, listaImplementos& listaImplementos) {
+void verSubMenuInformacion(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, listaEquipos& listaEquipos, listaImplementos& listaImplementos, listaSalas& listaSalas) {
     int op;
     cout<<"\n__Ver Informacion__"<<endl;
     cout<<"1. Especies"<<endl;
     cout<<"2. Personajes"<<endl;
     cout<<"3. Implementos"<<endl;
-    cout<<"4. Equipos (Soldados)"<<endl;
+    cout<<"4. Equipos"<<endl;
     cout<<"5. Mochilas" << endl;
-    cout<<"6. Mapas" << endl;
+    cout<<"6. Mapa" << endl;
     cout<<"7. Volver al menu principal"<<endl;
     cout<<"Seleccione una opcion: ";
     op=leerOpcion();
@@ -1096,28 +1815,32 @@ void verSubMenuInformacion(listaEspecies& listaEspecies, listaPersonajes& listaP
         case 1:
             cout<<"Mostrando Especies..."<<endl;
             cout<<"__________________"<<endl;
-                listaEspecies.mostrarEspecie();
+                listaEspecies.mostrarEspecies();
             break;
         case 2:
             cout<<"Mostrando Personajes..."<<endl;
             cout<<"__________________"<<endl;
-                listaPersonajes.mostrarPersonaje();
+                listaPersonajes.mostrarPersonajes();
             break;
         case 3:
             cout<<"Mostrando Implementos..."<<endl;
             cout<<"__________________"<<endl;
-            listaImplementos.mostrarImplemento();
+            listaImplementos.mostrarImplementos();
             break;
         case 4:
             cout<<"Mostrando Equipos..."<<endl;
             cout<<"__________________"<<endl;
-                listaEquipos.mostrarEquipo();
+            listaEquipos.mostrarEquipos();
             break;
         case 5:
             cout<<"Mostrando Mochilas..."<<endl;
+            cout<<"__________________"<<endl;
+            listaPersonajes.mostrarPersonajesConMochilas();
             break;
         case 6:
-            cout<<"Mostrando Mapas..."<<endl;
+            cout<<"Mostrando Salas..."<<endl;
+            cout<<"__________________"<<endl;
+            listaSalas.mostrarSalas();
             break;
         case 7:
             return;
@@ -1126,9 +1849,10 @@ void verSubMenuInformacion(listaEspecies& listaEspecies, listaPersonajes& listaP
 
 int main() {
     listaEspecies listaEspecies;
-    listaPersonajes listaPersonajes;
+    listaPersonajes listaPersonajes(listaEspecies);
     listaEquipos listaEquipos;
     listaImplementos listaImplementos;
+    listaSalas listaSalas;
 
     //especies
     listaEspecies.agregarEspecie("Elfo", "Heroe", 50, 0, 120, 25);
@@ -1151,6 +1875,9 @@ int main() {
     listaImplementos.agregarImplemento("Palo", "atacar", 1, 10, 100, 0, 0);
     listaImplementos.agregarImplemento("Escudo", "defender", 5, 125, 0, 0, 0);
 
+    //salas
+    listaSalas.leerArchivo("salas.txt");
+
     int op = 0;
     cout<<"\n___Bienvenido a Khazad-Dum___"<<endl;
     do {
@@ -1159,32 +1886,29 @@ int main() {
         cout<<"2. Crear Elemento"<<endl;
         cout<<"3. Eliminar Elemento"<<endl;
         cout<<"4. Modificar Elemento"<<endl;
-        cout<<"5. Visualizar Mapa"<<endl;
-        cout<<"6. Salir"<<endl;
+        cout<<"5. Salir"<<endl;
         cout<<"______________________"<<endl;
         cout<<"Selecciona una opcion: ";
         op=leerOpcion();
 
         switch (op) {
             case 1:
-                verSubMenuInformacion(listaEspecies, listaPersonajes, listaEquipos, listaImplementos);
+                verSubMenuInformacion(listaEspecies, listaPersonajes, listaEquipos, listaImplementos, listaSalas);
                 break;
             case 2:
-                verSubMenuAgregar(listaEspecies, listaPersonajes, listaEquipos, listaImplementos);
+                verSubMenuAgregar(listaEspecies, listaPersonajes, listaEquipos, listaImplementos, listaSalas);
                 break;
             case 3:
-                verSubMenuEliminar(listaEspecies, listaPersonajes, listaEquipos, listaImplementos);
+                verSubMenuEliminar(listaEspecies, listaPersonajes, listaEquipos, listaImplementos, listaSalas);
                 break;
             case 4:
-                verSubMenuModificar(listaEspecies, listaPersonajes, listaEquipos, listaImplementos);
+                verSubMenuModificar(listaEspecies, listaPersonajes, listaEquipos, listaImplementos, listaSalas);
                 break;
             case 5:
-                cout<<"[Visualizar Mapa] en desarrollo... Por favor buscar en 'Ver Informacion'"<<endl;
-                break;
-            case 6:
                 cout<<"Saliendo del programa..."<<endl;
                 return 0;
         }
-    }while (op!=6);
+    }while (op!=5);
     return 0;
 }
+
