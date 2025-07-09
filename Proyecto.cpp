@@ -13,6 +13,15 @@
 
 using namespace std;
 
+//Funcion para escribir el archivo de registro
+void escribirRegistro(const string& mensaje) {
+    ofstream archivo("registros.txt", ios::app);
+    if (archivo.is_open()) {
+        archivo << mensaje << endl;
+        archivo.close();
+    }
+}
+
 //Funcion para validar opciones numericas
 int leerOpcion() {
     int op;
@@ -32,7 +41,6 @@ int leerOpcion() {
 struct Sala;
 class listaEspecies;
 class listaPersonajes;
-class listaMochilas;
 
 //Estructura de las Especies
 struct especie {
@@ -44,6 +52,7 @@ struct especie {
     string tipo;
     especie* siguiente;
 };
+
 //Estructura de las Mochilas e Implementos
 struct implemento {
     string nombre;
@@ -2018,19 +2027,42 @@ class listaSalas {
             cout << "\n=== Mapa de Salas Aptas ===\n";
             cout << left << setw(5) << "ID" 
                 << setw(30) << "Nombre" 
-                << setw(20) << "Sala del Destino" << endl;
-            cout << string(60, '-') << endl;
+                << setw(50) << "Adyacencias:Distancia" << endl;
+            cout << string(85, '-') << endl;
 
             Sala* actual = cabeza;
             while (actual != nullptr) {
                 if (actual->apto) { // Solo mostrar salas aptas
                     cout << left << setw(5) << actual->id 
                         << setw(30) << actual->nombre 
-                        << setw(20) << (actual->PuertaDelDestino ? "Sí" : "No") << endl;
+                        << setw(50);
+                    
+                    // Mostrar adyacencias de salas aptas
+                    Adyacencia* adyacenteActual = actual->adyacencias;
+                    if (adyacenteActual == nullptr) {
+                        cout << "Ninguna"; 
+                    } else {
+                        string adyacenciasStr;
+                        while (adyacenteActual != nullptr) {
+                            if (adyacenteActual->salaDestino->apto) { // Solo mostrar adyacencias aptas
+                                adyacenciasStr += to_string(adyacenteActual->salaDestino->id) + ":" + to_string(adyacenteActual->distancia) + " ";
+                            }
+                            adyacenteActual = adyacenteActual->siguiente;
+                        }
+                        if (adyacenciasStr.empty()) {
+                            cout << "Ninguna apta";
+                        } else {
+                            if (adyacenciasStr.length() > 50) {
+                                adyacenciasStr = adyacenciasStr.substr(0, 47) + "...";
+                            }
+                            cout << adyacenciasStr;
+                        }
+                    }
+                    cout << endl;
                 }
                 actual = actual->siguiente;
             }
-            cout << string(60, '-') << endl; 
+            cout << string(85, '-') << endl; 
         }
 
         void asignarPuertaDelDestino() {
@@ -2056,7 +2088,8 @@ class listaSalas {
                         if (contador == indiceAleatorio) {
                             actual->PuertaDelDestino = true;
                             actual->pddApto = false;
-                            cout << "La Puerta del Destino ha aparecido en la sala: " << actual->nombre << endl;
+                            escribirRegistro("La Puerta del Destino ha aparecido en la sala: " + actual->nombre);
+                            cout << "La Puerta del Destino ha cambiado de lugar" << endl;
                             return;
                         }
                         contador++;
@@ -2176,9 +2209,20 @@ void asignarImplementosAEquipo(equipo& equipoSeleccionado, listaImplementos& lis
                 cout << "Índice inválido o implemento ya en uso.\n";
             }
 
-            cout << "¿Asignar otro implemento a " << pj->nombre << "? (1 = Sí, 0 = No): ";
-            agregarOtro = leerOpcion();
+            while (true) {
+                cout << "¿Asignar otro implemento a " << pj->nombre << "? (1 = Sí, 0 = No): ";
+                agregarOtro = leerOpcion();
+                
+                if (agregarOtro == 1 || agregarOtro == 0) {
+                    break;
+                } else {
+                    cout << "Opción inválida. Por favor ingresa 1 (Sí) o 0 (No).\n";
+                }
+            }
         }
+        cout << "\n=== Mochila actual de " << pj->nombre << " ===\n";
+        pj->mochila.mostrarMochila();
+        cout << "==========================================\n";
     }
 
     cout << " Implementos asignados exitosamente.\n";
@@ -2379,19 +2423,19 @@ void dispersarOrcosAdyacentes(int cantRondas, Sala* cabezaSalas, Sala* salaHeroe
         
         // Si el orco ya está en la sala de los héroes, no moverlo
         if (orcoActual.salaOrco == salaHeroes) {
-            cout << "- " << orcoActual.orco->nombre << " ya esta en la sala de los heroes\n";
+            escribirRegistro("- " + orcoActual.orco->nombre + " ya esta en la sala de los heroes");
             continue;
         }
         
         // Si no hay siguiente sala en el camino, el orco no puede moverse
         if (!orcoActual.siguienteSala) {
-            cout << "- " << orcoActual.orco->nombre << " no puede encontrar camino hacia los heroes\n";
+            escribirRegistro("- " + orcoActual.orco->nombre + " no puede encontrar camino hacia los heroes");
             continue;
         }
         
         // Verificar que la sala destino no esté llena
         if (orcoActual.siguienteSala->equipoOrcos.numMiembros >= 15) {
-            cout << "- " << orcoActual.orco->nombre << " no puede moverse: sala destino llena\n";
+            escribirRegistro("- " + orcoActual.orco->nombre + " no puede moverse: sala destino llena");
             continue;
         }
         
@@ -2406,17 +2450,17 @@ void dispersarOrcosAdyacentes(int cantRondas, Sala* cabezaSalas, Sala* salaHeroe
         orcoActual.siguienteSala->equipoOrcos.miembros[orcoActual.siguienteSala->equipoOrcos.numMiembros] = orcoActual.orco;
         orcoActual.siguienteSala->equipoOrcos.numMiembros++;
         
-        cout << "- " << orcoActual.orco->nombre << " se movio de " << orcoActual.salaOrco->nombre 
-             << " hacia " << orcoActual.siguienteSala->nombre << " (distancia a heroes: " 
-             << orcoActual.distanciaAHeroes << ")\n";
-        
+        escribirRegistro("- " + orcoActual.orco->nombre + " se movio de " + orcoActual.salaOrco->nombre + 
+                " hacia " + orcoActual.siguienteSala->nombre + " (distancia a heroes: " + 
+                to_string(orcoActual.distanciaAHeroes) + ")");
+
         orcosMovidos++;
     }
     
     if (orcosMovidos == 0) {
         cout << "No se pudieron mover orcos hacia los heroes en esta ronda.\n";
     } else {
-        cout << "Se movieron " << orcosMovidos << " orcos hacia los heroes.\n";
+        cout << "Distancia del orco mas cercano: " << orcosDisponibles[0].distanciaAHeroes << endl;
     }
     
     cout << "Movimiento de orcos completado.\n";
@@ -2432,10 +2476,12 @@ void generarYDispersarOrcos(int cantRondas, listaEspecies& listaEspecies, Sala* 
     for (int i = 0; i < numOrcosGenerar; i++) {
         if (salaOrigenOrcos->equipoOrcos.numMiembros < 15) {
             especie* orcoAleatorio = obtenerEspecieOrcoAleatoria(listaEspecies);
+            orcoAleatorio->ataque*1.5;
+            orcoAleatorio->salud*2.5;
             if (orcoAleatorio != nullptr) {
                 salaOrigenOrcos->equipoOrcos.miembros[salaOrigenOrcos->equipoOrcos.numMiembros] = orcoAleatorio;
                 salaOrigenOrcos->equipoOrcos.numMiembros++;
-                cout << "- " << orcoAleatorio->nombre << " generado en " << salaOrigenOrcos->nombre << "\n";
+                escribirRegistro("- " + orcoAleatorio->nombre + " generado en " + salaOrigenOrcos->nombre);
             }
         }
     }
@@ -2506,6 +2552,10 @@ int moverHeroes(listaSalas& listaSalas, equipo& equipoSeleccionado, Sala*& salaH
     
     cout << "\nSala actual: " << salaHeroes->nombre << " (ID: " << salaHeroes->id << ")" << endl;        
     listaSalas.mostrarMapaAdyacencias(salaHeroes, rapidezEquipo);
+    
+    escribirRegistro("=== MOVIMIENTO RONDA " + to_string(cantRondas) + " ===");
+    escribirRegistro("Equipo " + equipoSeleccionado.nombre + " en sala: " + salaHeroes->nombre + " (ID: " + to_string(salaHeroes->id) + ")");
+    escribirRegistro("Rapidez del equipo: " + to_string(rapidezEquipo));
     
     Adyacencia* ady = salaHeroes->adyacencias;
     bool haySalasAlcanzables = false;
@@ -2612,6 +2662,7 @@ int moverHeroes(listaSalas& listaSalas, equipo& equipoSeleccionado, Sala*& salaH
             cout << "\n¡ERROR! El ID " << idSeleccionada << " no es válido o no es alcanzable con tu rapidez actual." << endl;
             cout << "Por favor, selecciona un ID de las salas mostradas en el mapa." << endl;
             cout << "Salas alcanzables:" << endl;
+            escribirRegistro("Intento de movimiento inválido a sala ID: " + to_string(idSeleccionada));
         }
     }
     
@@ -2638,6 +2689,10 @@ int moverHeroes(listaSalas& listaSalas, equipo& equipoSeleccionado, Sala*& salaH
         cout << "Distancia recorrida: " << distanciaDirecta << endl;
         cout << "Salas recorridas: 1" << endl;
         cout << "No se generan turnos extra (solo 1 sala recorrida)" << endl;
+        
+        escribirRegistro("Movimiento directo: -> " + salaHeroes->nombre);
+        escribirRegistro("Distancia recorrida: " + to_string(distanciaDirecta));
+        escribirRegistro("Salas recorridas: 1 (sin turnos extra)");
         
         // Generar orcos DESPUÉS del movimiento para el turno principal
         if (cantRondas >= 1) {
@@ -2726,6 +2781,10 @@ int moverHeroes(listaSalas& listaSalas, equipo& equipoSeleccionado, Sala*& salaH
             cout << "Distancia recorrida: " << distanciaDestino << endl;
             cout << "Salas recorridas en el camino: " << salasDestino << endl;
             
+            escribirRegistro("Movimiento complejo: -> " + salaHeroes->nombre);
+            escribirRegistro("Distancia total recorrida: " + to_string(distanciaDestino));
+            escribirRegistro("Salas recorridas en el camino: " + to_string(salasDestino));
+
             // Generar orcos DESPUÉS del movimiento para el turno principal
             if (cantRondas >= 1) {
                 cout << "\n--- Generación de orcos después del movimiento principal ---" << endl;
@@ -2735,48 +2794,96 @@ int moverHeroes(listaSalas& listaSalas, equipo& equipoSeleccionado, Sala*& salaH
             // Solo generar turnos extra si se recorrieron 2 o más salas
             if (salasDestino >= 2) {
                 cout << "Generando " << (salasDestino - 1) << " turnos extra..." << endl;
+                escribirRegistro("Generando " + to_string(salasDestino - 1) + " turnos extra por movimiento complejo");
                 for (int i = 0; i < salasDestino - 1; i++) {
                     cantRondas++;
                     cout << "\n--- Turno Extra " << cantRondas << " ---" << endl;
+                    escribirRegistro("=== TURNO EXTRA " + to_string(cantRondas) + " ===");
                     generarYDispersarOrcos(cantRondas, listaEspecies, salaOrcos, listaSalas.obtenerCabeza(), salaHeroes);
                 }
-            } else {
-                cout << "No se generan turnos extra (menos de 2 salas recorridas)" << endl;
             }
+            
         }
     }
-    
+    escribirRegistro("Movimiento completado. Turnos extra generados: " + to_string(turnosExtra)); 
     return turnosExtra;
 }
 
-void usarPoderMagico(listaEspecies& listaEspecies, listaSalas& listaSalas, listaImplementos& listaImplementos) {
+void usarPoderMagico(listaEspecies& listaEspecies, listaSalas& listaSalas, listaImplementos& listaImplementos, bool poderesUsados[4]) {
     int opcion;
     cout << "\n=== Poderes Mágicos Disponibles ===\n";
-    cout << "1. Revivir y fortalecer enanos\n";
-    cout << "2. Mover orcos de una sala a otra\n";
-    cout << "3. Reducir salud de orcos en una sala a 1\n";
-    cout << "4. Duplicar ataque y reducir fortaleza de implementos\n";
+    cout << "1. Revivir y fortalecer enanos";
+    if (poderesUsados[0]) cout << " (YA USADO)";
+    cout << "\n";
+    cout << "2. Mover orcos de una sala a otra";
+    if (poderesUsados[1]) cout << " (YA USADO)";
+    cout << "\n";
+    cout << "3. Reducir salud de orcos en una sala a 1";
+    if (poderesUsados[2]) cout << " (YA USADO)";
+    cout << "\n";
+    cout << "4. Duplicar ataque y reducir fortaleza de implementos";
+    if (poderesUsados[3]) cout << " (YA USADO)";
+    cout << "\n";
     cout << "Selecciona un poder mágico: ";
     opcion = leerOpcion();
     cout << "-----------------------------------\n";
 
     switch (opcion) {
         case 1: {
-            // Poder 1: Revivir y fortalecer enanos
-            especie* temp = listaEspecies.obtenerCabeza();
-            while (temp != nullptr) {
-                if (temp->nombre == "Enano" && temp->tipo == "Heroe") {
-                    temp->salud += 100;
-                    temp->fortaleza += 1000;
-                    cout << "¡Los enanos han sido revitalizados! Nueva salud: " << temp->salud
-                         << ", nueva fortaleza: " << temp->fortaleza << endl;
-                }
-                temp = temp->siguiente;
+            if (poderesUsados[0]) {
+                cout << "\n¡Este poder mágico ya ha sido usado!" << endl;
+                cout << "Cada poder mágico solo se puede usar una vez por partida." << endl;
+                escribirRegistro("PODER MAGICO DENEGADO: Poder 1 (Revivir enanos) ya fue usado anteriormente");
+                return;
             }
+            
+            // Poder 1: Revivir y fortalecer especie seleccionada
+            cout << "\n=== Seleccionar Especie para Fortalecer ===\n";
+            listaEspecies.mostrarEspecies();
+            
+            especie* especieSeleccionada = listaEspecies.seleccionarEspecie();
+            if (!especieSeleccionada) {
+                cout << "No se seleccionó ninguna especie.\n";
+                return;
+            }
+            
+            cout << "\nEspecie seleccionada: " << especieSeleccionada->nombre << endl;
+            cout << "Valores actuales:" << endl;
+            cout << "- Salud: " << especieSeleccionada->salud << endl;
+            
+            if (especieSeleccionada->tipo == "Heroe") {
+                cout << "- Fortaleza: " << especieSeleccionada->fortaleza << endl;
+                especieSeleccionada->salud += 100;
+                especieSeleccionada->fortaleza += 1000;
+                cout << "\n¡La especie " << especieSeleccionada->nombre << " ha sido revitalizada!" << endl;
+                cout << "Nueva salud: " << especieSeleccionada->salud << endl;
+                cout << "Nueva fortaleza: " << especieSeleccionada->fortaleza << endl;
+                
+                escribirRegistro("Poder magico 1 usado: " + especieSeleccionada->nombre + " revitalizado - Salud: " + 
+                                to_string(especieSeleccionada->salud) + ", Fortaleza: " + to_string(especieSeleccionada->fortaleza));
+            } else {
+                cout << "- Ataque: " << especieSeleccionada->ataque << endl;
+                especieSeleccionada->salud += 100;
+                especieSeleccionada->ataque += 50;
+                cout << "\n¡La especie " << especieSeleccionada->nombre << " ha sido revitalizada!" << endl;
+                cout << "Nueva salud: " << especieSeleccionada->salud << endl;
+                cout << "Nuevo ataque: " << especieSeleccionada->ataque << endl;
+                
+                escribirRegistro("Poder magico 1 usado: " + especieSeleccionada->nombre + " revitalizado - Salud: " + 
+                                to_string(especieSeleccionada->salud) + ", Ataque: " + to_string(especieSeleccionada->ataque));
+            }
+            poderesUsados[0] = true;
             break;
         }
 
         case 2: {
+            if (poderesUsados[1]) {
+                cout << "\n¡Este poder mágico ya ha sido usado!" << endl;
+                cout << "Cada poder mágico solo se puede usar una vez por partida." << endl;
+                escribirRegistro("PODER MAGICO DENEGADO: Poder 2 (Mover orcos) ya fue usado anteriormente");
+                return;
+            }
+            
             // Poder 2: Mover orcos de una sala a otra
             listaSalas.mostrarSalas();
             cout << "ID de la sala ORIGEN (donde están los orcos): ";
@@ -2798,12 +2905,23 @@ void usarPoderMagico(listaEspecies& listaEspecies, listaSalas& listaSalas, lista
                     salaOrigen->equipoOrcos.miembros[i];
             }
             salaOrigen->equipoOrcos.numMiembros = 0;
+            
+            escribirRegistro("Poder magico 2 usado: Se movieron " + to_string(orcosMovidos) + " orcos de " + 
+                            salaOrigen->nombre + " a " + salaDestino->nombre);
             cout << "Se han movido " << orcosMovidos << " orcos de " << salaOrigen->nombre
-                 << " a " << salaDestino->nombre << ".\n";
+                << " a " << salaDestino->nombre << ".\n";
+            poderesUsados[1] = true;
             break;
         }
 
         case 3: {
+            if (poderesUsados[2]) {
+                cout << "\n¡Este poder mágico ya ha sido usado!" << endl;
+                cout << "Cada poder mágico solo se puede usar una vez por partida." << endl;
+                escribirRegistro("PODER MAGICO DENEGADO: Poder 3 (Reducir salud orcos) ya fue usado anteriormente");
+                return;
+            }
+            
             // Poder 3: Reducir salud de todos los orcos de una sala a 1
             listaSalas.mostrarSalas();
             cout << "ID de la sala donde reducir la salud de los orcos: ";
@@ -2814,29 +2932,48 @@ void usarPoderMagico(listaEspecies& listaEspecies, listaSalas& listaSalas, lista
                 return;
             }
 
+            int orcosAfectados = sala->equipoOrcos.numMiembros;
             for (int i = 0; i < sala->equipoOrcos.numMiembros; i++) {
                 sala->equipoOrcos.miembros[i]->salud = 1;
             }
+            
+            escribirRegistro("Poder magico 3 usado: Reducida salud a 1 de " + to_string(orcosAfectados) + 
+                            " orcos en sala " + sala->nombre);
             cout << "Todos los orcos en la sala " << sala->nombre << " tienen ahora 1 de salud.\n";
+            poderesUsados[2] = true;
             break;
         }
 
         case 4: {
+            if (poderesUsados[3]) {
+                cout << "\n¡Este poder mágico ya ha sido usado!" << endl;
+                cout << "Cada poder mágico solo se puede usar una vez por partida." << endl;
+                escribirRegistro("PODER MAGICO DENEGADO: Poder 4 (Duplicar ataque implementos) ya fue usado anteriormente");
+                return;
+            }
+            
             // Poder 4: Duplicar ataque y reducir fortaleza a 0
             int total = listaImplementos.obtenerCantidad();
+            int implementosAfectados = 0;
             for (int i = 0; i < total; i++) {
                 implemento* imp = listaImplementos.obtenerImplemento(i);
                 if (imp->tipo == "atacar") {
                     imp->valorAtk *= 2;
                     imp->fortaleza = 0;
+                    implementosAfectados++;
                 }
             }
+            
+            escribirRegistro("Poder magico 4 usado: Duplicado ataque y eliminada fortaleza de " + 
+                            to_string(implementosAfectados) + " implementos de ataque");
             cout << "¡Los implementos de ataque ahora hacen el doble de daño y no requieren fortaleza!\n";
+            poderesUsados[3] = true;
             break;
         }
 
         default:
             cout << "Opción inválida.\n";
+            escribirRegistro("PODER MAGICO: Opcion invalida seleccionada: " + to_string(opcion));
     }
 }
 
@@ -2866,9 +3003,13 @@ struct EstadisticasCombate {
         }
     }
 };
-void armarBatalla(listaSalas& listaSalas, equipo& equipoHeroes, Sala*& salaActual, int& cantRondas) {
+void armarBatalla(listaSalas& listaSalas, equipo& equipoHeroes, Sala*& salaActual, int& cantRondas, listaEspecies& listaEspecies, listaImplementos& listaImplementos) {
     cout << "\n=== ¡COMBATE INICIADO! ===" << endl;
     
+    escribirRegistro("=== COMBATE INICIADO EN RONDA " + to_string(cantRondas) + " ===");
+    escribirRegistro("Sala de combate: " + salaActual->nombre + " (ID: " + to_string(salaActual->id) + ")");
+    escribirRegistro("Equipo: " + equipoHeroes.nombre);
+
     // Crear estadísticas de combate para héroes
     EstadisticasCombate* estadisticasHeroes[4];
     int numHeroesVivos = 0;
@@ -2877,6 +3018,7 @@ void armarBatalla(listaSalas& listaSalas, equipo& equipoHeroes, Sala*& salaActua
         personaje* heroe = equipoHeroes.personajes[i];
         if (heroe && heroe->especie) {
             estadisticasHeroes[numHeroesVivos] = new EstadisticasCombate(heroe);
+            escribirRegistro("Heroe en combate: " + heroe->nombre + " (" + heroe->especie->nombre + ") - Salud: " + to_string(heroe->especie->salud) + ", Fortaleza: " + to_string(heroe->especie->fortaleza));
             numHeroesVivos++;
         }
     }
@@ -2885,6 +3027,7 @@ void armarBatalla(listaSalas& listaSalas, equipo& equipoHeroes, Sala*& salaActua
     EstadisticasCombate* estadisticasOrcos[15];
     int numOrcosVivos = salaActual->equipoOrcos.numMiembros;
     
+    escribirRegistro("Numero de orcos enemigos: " + to_string(numOrcosVivos));
     for (int i = 0; i < numOrcosVivos; i++) {
         especie* orco = salaActual->equipoOrcos.miembros[i];
         if (orco) {
@@ -2893,6 +3036,7 @@ void armarBatalla(listaSalas& listaSalas, equipo& equipoHeroes, Sala*& salaActua
             orcoTemp->especie = orco;
             orcoTemp->nombre = orco->nombre;
             estadisticasOrcos[i] = new EstadisticasCombate(orcoTemp);
+            escribirRegistro("Orco enemigo: " + orco->nombre + " - Ataque: " + to_string(orco->ataque) + ", Salud: " + to_string(orco->salud));
         }
     }
     
@@ -2904,6 +3048,8 @@ void armarBatalla(listaSalas& listaSalas, equipo& equipoHeroes, Sala*& salaActua
         cout << "2. Continuar con el combate" << endl;
         cout << "Selecciona una opción: ";
         
+        escribirRegistro("ALERTA: Proporcion 3:1 detectada (" + to_string(numOrcosVivos) + " orcos vs " + to_string(numHeroesVivos) + " heroes)");
+
         int opcionHuida = leerOpcion();
         
         if (opcionHuida == 1) {
@@ -2922,6 +3068,7 @@ void armarBatalla(listaSalas& listaSalas, equipo& equipoHeroes, Sala*& salaActua
             
             if (salaMasCercana) {
                 cout << "¡Has huido exitosamente a " << salaMasCercana->nombre << "!" << endl;
+                escribirRegistro("HUIDA EXITOSA: Equipo huyo de " + salaActual->nombre + " a " + salaMasCercana->nombre + " (distancia: " + to_string(menorDistancia) + ")");
                 salaActual = salaMasCercana;
                 
                 // Limpiar memoria
@@ -2935,7 +3082,10 @@ void armarBatalla(listaSalas& listaSalas, equipo& equipoHeroes, Sala*& salaActua
                 return;
             } else {
                 cout << "No hay salas adyacentes para huir. ¡Debes luchar!" << endl;
+                escribirRegistro("HUIDA FALLIDA: No hay salas adyacentes disponibles");
             }
+        } else {
+            escribirRegistro("El equipo decidio continuar con el combate a pesar de la desventaja");
         }
     }
     
@@ -2945,6 +3095,7 @@ void armarBatalla(listaSalas& listaSalas, equipo& equipoHeroes, Sala*& salaActua
     
     while (combateActivo && numHeroesVivos > 0 && numOrcosVivos > 0) {
         cout << "\n=== TURNO " << turno << " ===" << endl;
+        escribirRegistro("--- TURNO DE COMBATE " + to_string(turno) + " ---");
         
         // Turno de los héroes (atacan primero)
         for (int i = 0; i < numHeroesVivos && numOrcosVivos > 0; i++) {
@@ -2960,7 +3111,6 @@ void armarBatalla(listaSalas& listaSalas, equipo& equipoHeroes, Sala*& salaActua
             cout << "\nOpciones de combate:" << endl;
             cout << "1. Atacar" << endl;
             cout << "2. Curar" << endl;
-            cout << "3. Usar poder mágico (Reservado)" << endl;
             cout << "Selecciona una opción: ";
             
             int accion = leerOpcion();
@@ -3008,10 +3158,12 @@ void armarBatalla(listaSalas& listaSalas, equipo& equipoHeroes, Sala*& salaActua
                                     cout << "Tu fortaleza se redujo a: " << estadisticasHeroes[i]->fortalezaActual << endl;
                                 } else {
                                     cout << "Arma no válida. Ataque perdido." << endl;
+                                    escribirRegistro(heroeActual->nombre + " intento usar arma invalida - turno perdido");
                                     continue;
                                 }
                             } else {
                                 cout << "Ataque cancelado." << endl;
+                                escribirRegistro(heroeActual->nombre + " cancelo el ataque con arma");
                                 continue;
                             }
                         } else {
@@ -3035,10 +3187,13 @@ void armarBatalla(listaSalas& listaSalas, equipo& equipoHeroes, Sala*& salaActua
                         estadisticasOrcos[objetivoOrco]->saludActual -= danoInfligido;
                         cout << "Atacaste a " << salaActual->equipoOrcos.miembros[objetivoOrco]->nombre 
                              << " causando " << danoInfligido << " de daño." << endl;
-                        cout << "Salud del orco: " << estadisticasOrcos[objetivoOrco]->saludActual << endl;
+                        cout << "Salud del enemigo: " << estadisticasOrcos[objetivoOrco]->saludActual << endl;
                         
+                        escribirRegistro(heroeActual->nombre + " ataco a " + salaActual->equipoOrcos.miembros[objetivoOrco]->nombre + " - Dano: " + to_string(danoInfligido) + " (Salud: -> " + to_string(estadisticasOrcos[objetivoOrco]->saludActual) + ")");
+
                         if (estadisticasOrcos[objetivoOrco]->saludActual <= 0) {
                             cout << "¡" << salaActual->equipoOrcos.miembros[objetivoOrco]->nombre << " ha muerto!" << endl;
+                            escribirRegistro("MUERTE: " + salaActual->equipoOrcos.miembros[objetivoOrco]->nombre + " fue eliminado por " + heroeActual->nombre);
                         }
                     }
                     break;
@@ -3072,21 +3227,19 @@ void armarBatalla(listaSalas& listaSalas, equipo& equipoHeroes, Sala*& salaActua
                                 cout << "Usaste " << consumibleSeleccionado->nombre << ". Salud restaurada: " << consumibleSeleccionado->valorHeal << endl;
                                 cout << "Salud actual: " << estadisticasHeroes[i]->saludActual << endl;
                                 cout << "Usos restantes: " << consumibleSeleccionado->usos << endl;
+                                escribirRegistro(heroeActual->nombre + " uso " + consumibleSeleccionado->nombre + " - Curacion: " + to_string(consumibleSeleccionado->valorHeal) + " (Salud: -> " + to_string(estadisticasHeroes[i]->saludActual) + ")");
                             }
                         }
                     } else {
                         cout << "No tienes consumibles disponibles." << endl;
+                        escribirRegistro(heroeActual->nombre + " intento curar pero no tiene consumibles disponibles");
                     }
-                    break;
-                }
-                
-                case 3: { // Poder mágico (reservado)
-                    cout << "Poder mágico no implementado aún." << endl;
                     break;
                 }
                 
                 default:
                     cout << "Opción no válida. Turno perdido." << endl;
+                    escribirRegistro(heroeActual->nombre + " selecciono opcion invalida - turno perdido");
                     break;
             }
         }
@@ -3102,11 +3255,14 @@ void armarBatalla(listaSalas& listaSalas, equipo& equipoHeroes, Sala*& salaActua
         
         if (numOrcosVivos == 0) {
             cout << "\n¡VICTORIA! ¡Todos los orcos han sido derrotados!" << endl;
+            escribirRegistro("VICTORIA: Todos los orcos fueron derrotados en el turno " + to_string(turno));
             break;
         }
         
         // Turno de los orcos
         cout << "\n--- Turno de los Orcos ---" << endl;
+        escribirRegistro("Turno de los orcos - " + to_string(numOrcosVivos) + " orcos vivos");
+
         for (int i = 0; i < salaActual->equipoOrcos.numMiembros && numHeroesVivos > 0; i++) {
             if (estadisticasOrcos[i]->saludActual <= 0) {
                 continue;
@@ -3180,8 +3336,11 @@ void armarBatalla(listaSalas& listaSalas, equipo& equipoHeroes, Sala*& salaActua
                 cout << orcoActual->nombre << " atacó a " << heroeObjetivo->nombre << " causando " << danoOrco << " de daño." << endl;
                 cout << "Salud de " << heroeObjetivo->nombre << ": " << estadisticasHeroes[objetivoHeroe]->saludActual << endl;
                 
+                escribirRegistro(orcoActual->nombre + " ataco a " + heroeObjetivo->nombre + " - Dano: " + to_string(danoOrco) + " (Salud: -> " + to_string(estadisticasHeroes[objetivoHeroe]->saludActual) + ")");
+
                 if (estadisticasHeroes[objetivoHeroe]->saludActual <= 0) {
                     cout << "¡" << heroeObjetivo->nombre << " ha muerto!" << endl;
+                    escribirRegistro("MUERTE: " + heroeObjetivo->nombre + " fue eliminado por " + orcoActual->nombre);
                     estadisticasHeroes[objetivoHeroe]->puedeActuar = false;
                 }
             }
@@ -3199,6 +3358,8 @@ void armarBatalla(listaSalas& listaSalas, equipo& equipoHeroes, Sala*& salaActua
         if (numHeroesVivos == 0) {
             cout << "\n¡DERROTA! ¡Todos los héroes han muerto!" << endl;
             cout << "Los orcos han ganado. ¡FIN DEL JUEGO!" << endl;
+            escribirRegistro("DERROTA TOTAL: Todos los heroes murieron en el turno " + to_string(turno));
+            escribirRegistro("FIN DEL JUEGO - Victoria de los orcos");
             combateActivo = false;
             
             // Limpiar memoria y salir del programa
@@ -3221,9 +3382,12 @@ void armarBatalla(listaSalas& listaSalas, equipo& equipoHeroes, Sala*& salaActua
     if (numOrcosVivos == 0) {
         salaActual->equipoOrcos.numMiembros = 0;
         cout << "La sala ha sido liberada de orcos." << endl;
-        
+        escribirRegistro("SALA LIBERADA: " + salaActual->nombre + " ha sido liberada de orcos");        
+
         // Aplicar recuperación de fortaleza para próximas rondas sin combate
         cout << "Los héroes recuperarán fortaleza gradualmente en las próximas rondas sin combate." << endl;
+        escribirRegistro("Los heroes iniciaran recuperacion de fortaleza");
+
         for (int i = 0; i < numHeroesVivos; i++) {
             estadisticasHeroes[i]->rondasSinCombate = 0; // Reiniciar contador
         }
@@ -3240,6 +3404,7 @@ void armarBatalla(listaSalas& listaSalas, equipo& equipoHeroes, Sala*& salaActua
     }
     
     cout << "\n=== FIN DEL COMBATE ===" << endl;
+    escribirRegistro("=== FIN DEL COMBATE ===");
 }
 
 //Menu de Juego
@@ -3248,28 +3413,52 @@ void menuJuego(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, l
     elegirEquipo(listaEquipos, listaPersonajes, equipoSeleccionado);
     asignarImplementosAEquipo(*equipoSeleccionado, listaImplementos);
     cout << endl;
+    
+    // Registrar inicio del juego
+    escribirRegistro("=== INICIO DEL JUEGO ===");
+    escribirRegistro("Equipo seleccionado: " + equipoSeleccionado->nombre);
+    escribirRegistro("Miembros del equipo:");
+    for (int i = 0; i < equipoSeleccionado->numPjs; i++) {
+        personaje* pj = equipoSeleccionado->personajes[i];
+        if (pj && pj->especie) {
+            escribirRegistro("- " + pj->nombre + " (" + pj->especie->nombre + ") - Salud: " + to_string(pj->especie->salud) + ", Rapidez: " + to_string(pj->especie->rapidez));
+        }
+    }
+    
     auto extremos = listaSalas.buscarExtremosDeSalas();
     Sala* salaHeroes = extremos.first;
     Sala* salaOrcos = extremos.second;
+    
+    // Registrar posiciones iniciales
+    escribirRegistro("Posicion inicial de heroes: " + salaHeroes->nombre + " (ID: " + to_string(salaHeroes->id) + ")");
+    escribirRegistro("Posicion de generacion de orcos: " + salaOrcos->nombre + " (ID: " + to_string(salaOrcos->id) + ")");
+    
     listaSalas.asignarPuertaDelDestino();
     cout << endl;
     cout << "Bienvenido a Khazad-Dum" << endl;
     cout << "Llega a la Puerta del Destino en los túneles ancestrales para invocar la ayuda de Gandalf." << endl;
 
     int cantRondas = 0;
+    int ultimaRondaPoderMagico = -5;
+    bool poderesUsados[4] = {false, false, false, false}; // Array para rastrear qué poderes han sido usados
     
     while (true) {
         if (verificarVictoria(salaHeroes)) {
+            escribirRegistro("VICTORIA FINAL: El equipo " + equipoSeleccionado->nombre + " ha encontrado la Puerta del Destino!");
+            escribirRegistro("Juego completado exitosamente en la ronda " + to_string(cantRondas));
             break;
         }
 
         if (cantRondas % 5 == 0 && cantRondas > 0) {
+            escribirRegistro("Ronda " + to_string(cantRondas) + ": La Puerta del Destino se mueve a una nueva ubicacion");
             listaSalas.asignarPuertaDelDestino();
         }
 
         if (!listaSalas.existePuertaDelDestino() && cantRondas > 0) {
             cout << "La Puerta del Destino ha recorrido todas las salas y no has llegado a tiempo." << endl;
             cout << "¡Los orcos han invadido todo el subterráneo! ¡HAS PERDIDO!" << endl;
+            escribirRegistro("DERROTA FINAL: La Puerta del Destino desaparecio - Los orcos invadieron todo el subterraneo");
+            escribirRegistro("Juego terminado en derrota en la ronda " + to_string(cantRondas));
             break;
         }
 
@@ -3277,34 +3466,90 @@ void menuJuego(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, l
         cout << "\n--- Menú del Juego (Ronda " << cantRondas + 1 << ") ---" << endl;
         cout << "1. Moverse entre salas" << endl;
         cout << "2. Mostrar mapa" << endl;
-        cout << "3. Usar Poder Magico" << endl;
+        cout << "3. Usar Poder Magico";
+        
+        int rondasDesdeUltimoPoder = cantRondas - ultimaRondaPoderMagico;
+        if (rondasDesdeUltimoPoder < 5) {
+            int rondasRestantes = 5 - rondasDesdeUltimoPoder;
+            cout << " (DISPONIBLE EN " << rondasRestantes << " RONDAS)";
+        } else {
+            // Verificar si quedan poderes disponibles
+            bool hayPoderesDisponibles = false;
+            for (int i = 0; i < 4; i++) {
+                if (!poderesUsados[i]) {
+                    hayPoderesDisponibles = true;
+                    break;
+                }
+            }
+            
+            if (hayPoderesDisponibles) {
+                cout << " (DISPONIBLE)";
+            } else {
+                cout << " (TODOS LOS PODERES USADOS)";
+            }
+        }
+        cout << endl;
         cout << "4. Terminar Juego." << endl;
         cout << "Selecciona una opción: ";
         op = leerOpcion();
 
+        escribirRegistro("Ronda " + to_string(cantRondas + 1) + " - Opcion seleccionada: " + to_string(op));
+
         switch (op) {
             case 1: {
                 ++cantRondas;
+                escribirRegistro("=== INICIO RONDA " + to_string(cantRondas) + " ===");
 
                 cout << "\n=== RONDA " << cantRondas << " ===\n";
                 
                 // Verificar encuentro con orcos ANTES del movimiento
                 if (verificarEncuentroConOrcos(salaHeroes)) {
                     cout << "¡Encuentro con orcos! Debes luchar o huir." << endl;
-                    armarBatalla(listaSalas, *equipoSeleccionado, salaHeroes, cantRondas);
+                    escribirRegistro("ENCUENTRO CON ORCOS en " + salaHeroes->nombre + " - " + to_string(salaHeroes->equipoOrcos.numMiembros) + " orcos presentes");
+                    armarBatalla(listaSalas, *equipoSeleccionado, salaHeroes, cantRondas, listaEspecies, listaImplementos);
                 }
 
                 int turnosExtra = moverHeroes(listaSalas, *equipoSeleccionado, salaHeroes, listaEspecies, salaOrcos, cantRondas);
                 
                 cout << "Movimiento completado. Turnos extra generados: " << turnosExtra << endl;
+                escribirRegistro("Ronda " + to_string(cantRondas) + " completada - Turnos extra: " + to_string(turnosExtra));
+                escribirRegistro("Posicion actual del equipo: " + salaHeroes->nombre + " (ID: " + to_string(salaHeroes->id) + ")");
                 break;
             }
             case 2: {
+                escribirRegistro("Jugador consulto el mapa de salas aptas");
                 listaSalas.mostrarMapaSalasAptas();
                 break;
             }
             case 3: {
-                usarPoderMagico(listaEspecies, listaSalas, listaImplementos);
+                int rondasDesdeUltimoPoder = cantRondas - ultimaRondaPoderMagico;
+                if (rondasDesdeUltimoPoder < 5) {
+                    int rondasRestantes = 5 - rondasDesdeUltimoPoder;
+                    cout << "\n¡No puedes usar un poder mágico aún!" << endl;
+                    cout << "Debes esperar " << rondasRestantes << " rondas más." << endl;
+                    cout << "Último uso: Ronda " << ultimaRondaPoderMagico << ", Ronda actual: " << cantRondas << endl;
+                    escribirRegistro("PODER MAGICO DENEGADO: Faltan " + to_string(rondasRestantes) + " rondas (ultimo uso: ronda " + to_string(ultimaRondaPoderMagico) + ")");
+                } else {
+                    // Verificar si quedan poderes disponibles
+                    bool hayPoderesDisponibles = false;
+                    for (int i = 0; i < 4; i++) {
+                        if (!poderesUsados[i]) {
+                            hayPoderesDisponibles = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!hayPoderesDisponibles) {
+                        cout << "\n¡Todos los poderes mágicos ya han sido usados!" << endl;
+                        cout << "Cada poder mágico solo se puede usar una vez por partida." << endl;
+                        escribirRegistro("PODER MAGICO DENEGADO: Todos los poderes magicos ya fueron usados");
+                    } else {
+                        escribirRegistro("Jugador accedio al menu de poderes magicos en ronda " + to_string(cantRondas));
+                        usarPoderMagico(listaEspecies, listaSalas, listaImplementos, poderesUsados);
+                        ultimaRondaPoderMagico = cantRondas; // Actualizar la ronda del último uso
+                        escribirRegistro("PODER MAGICO: Registrado acceso en ronda " + to_string(cantRondas) + " - Proximo uso disponible en ronda " + to_string(cantRondas + 5));
+                    }
+                }
                 break;
             }
             case 4: {
@@ -3313,17 +3558,30 @@ void menuJuego(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, l
                 cin >> opcion;
                 if (opcion == "Si" || opcion == "si" || opcion == "SI" || opcion == "sI") {
                     cout << "Juego terminado." << endl;
+                    escribirRegistro("JUEGO TERMINADO: El jugador decidio salir en la ronda " + to_string(cantRondas + 1));
+                    escribirRegistro("Posicion final del equipo: " + salaHeroes->nombre + " (ID: " + to_string(salaHeroes->id) + ")");
+                    
+                    // Registrar estado final de poderes mágicos
+                    escribirRegistro("Estado final de poderes magicos:");
+                    string poderes[4] = {"Revivir enanos", "Mover orcos", "Reducir salud orcos", "Duplicar ataque implementos"};
+                    for (int i = 0; i < 4; i++) {
+                        escribirRegistro("- " + poderes[i] + ": " + (poderesUsados[i] ? "USADO" : "NO USADO"));
+                    }
                     return;
+                } else {
+                    escribirRegistro("Jugador cancelo la salida del juego");
                 }
                 break;
             }
             default: {
                 cout << "Opción no válida. Intenta de nuevo." << endl;
+                escribirRegistro("Opcion invalida seleccionada: " + to_string(op));
                 break;
             }
         }
     }
     
+    escribirRegistro("=== FIN DEL JUEGO ===");
     return;
 }
 
@@ -3749,8 +4007,33 @@ void menuInicial(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes,
                 cout << "No se encontraron personajes cargados.\n";
             }
 
-            cout << "Partida cargada. Iniciando juego...\n\n";
-            menuJuego(listaEspecies, listaPersonajes, listaEquipos, listaImplementos, listaSalas, equipoSeleccionado);
+            cout << "Partida cargada exitosamente.\n\n";
+            
+            // Preguntar si quiere modificar los datos
+            int modificar;
+            do {
+                cout << "¿Deseas modificar los datos cargados antes de iniciar el juego?\n";
+                cout << "1. Sí, modificar datos\n";
+                cout << "2. No, iniciar juego directamente\n";
+                cout << "Selecciona una opción: ";
+                modificar = leerOpcion();
+                
+                switch (modificar) {
+                    case 1:
+                        cout << "\nAccediendo al menú de operaciones...\n";
+                        verSubMenuOperaciones(listaEspecies, listaPersonajes, listaEquipos, listaImplementos, listaSalas);
+                        // Después de salir del menú de operaciones, volver a preguntar
+                        break;
+                    case 2:
+                        cout << "\nIniciando juego...\n\n";
+                        menuJuego(listaEspecies, listaPersonajes, listaEquipos, listaImplementos, listaSalas, equipoSeleccionado);
+                        return; // Salir de la función después de terminar el juego
+                    default:
+                        cout << "Opción inválida. Por favor selecciona 1 o 2.\n";
+                        break;
+                }
+            } while (modificar != 2);
+            
             break;
 
         case 2:
@@ -3765,6 +4048,12 @@ void menuInicial(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes,
 }
 
 int main() {
+    ofstream archivo("registros.txt");
+    if (archivo.is_open()) {
+        archivo << "=== INICIO DEL JUEGO ===" << endl;
+        archivo.close();
+    }
+
     listaEspecies listaEspecies;
     listaPersonajes listaPersonajes(listaEspecies);
     listaEquipos listaEquipos;
@@ -3772,6 +4061,23 @@ int main() {
     listaSalas listaSalas;
     equipo* equipoSeleccionado = nullptr;
     Sala* salaActual = nullptr;
+
+    //Inicializar algunos implementos para comodidad al inicio
+    listaImplementos.agregarImplemento("Sting de Bilbo", "atacar", 80, 140, 95, 0, 0);
+    listaImplementos.agregarImplemento("Martillo de Durin", "atacar", 25, 220, 160, 0, 0);
+    listaImplementos.agregarImplemento("Vara de Radagast", "atacar", 15, 90, 85, 0, 0);
+    listaImplementos.agregarImplemento("Cimitarra de Haradrim", "atacar", 60, 130, 110, 0, 0);
+    listaImplementos.agregarImplemento("Lanza de Rohan", "atacar", 40, 160, 125, 0, 0);
+    listaImplementos.agregarImplemento("Escudo de Erebor", "defender", 120, 180, 0, 130, 0);
+    listaImplementos.agregarImplemento("Cota de Malla Élfica", "defender", 200, 200, 0, 90, 0);
+    listaImplementos.agregarImplemento("Brazaletes de Poder", "defender", 50, 120, 0, 70, 0);
+    listaImplementos.agregarImplemento("Casco de Isengard", "defender", 80, 140, 0, 85, 0);
+    listaImplementos.agregarImplemento("Elixir de Rivendel", "curar", 5, 100, 0, 0, 50);
+    listaImplementos.agregarImplemento("Lembas Élfico", "curar", 10, 60, 0, 0, 25);
+    listaImplementos.agregarImplemento("Agua de Lothlórien", "curar", 8, 80, 0, 0, 40);
+    listaImplementos.agregarImplemento("Hierba de Athelas", "curar", 15, 50, 0, 0, 20);
+    listaImplementos.agregarImplemento("Bálsamo de Gondor", "curar", 6, 90, 0, 0, 45);
+
 
     // Iniciar el juego
     menuInicial(listaEspecies, listaPersonajes, listaEquipos, listaImplementos, listaSalas, equipoSeleccionado, salaActual);
