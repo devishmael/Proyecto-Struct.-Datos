@@ -8,6 +8,8 @@
 #include <cctype>
 #include <iomanip>
 #include <stack>
+#include <cfloat>
+#include <climits>
 
 using namespace std;
 
@@ -1191,6 +1193,10 @@ class listaSalas {
         }
 
     public:
+        Sala* obtenerCabeza() {
+            return cabeza;
+        }
+
         listaSalas() {
             cabeza = nullptr;
         }
@@ -2072,216 +2078,7 @@ class listaSalas {
             }
             return false;
         }
-
-        especie* obtenerEspecieOrcoAleatoria(listaEspecies& listaEspecies) {
-            int contadorOrcos = 0;
-            especie* temp = listaEspecies.obtenerCabeza();
-            while (temp != nullptr) {
-                if (temp->tipo == "Orco") {
-                    contadorOrcos++;
-                }
-                temp = temp->siguiente;
-            }
-            
-            if (contadorOrcos == 0) return nullptr;
-            
-            int indiceAleatorio = rand() % contadorOrcos;
-            temp = listaEspecies.obtenerCabeza();
-            int contador = 0;
-            
-            while (temp != nullptr) {
-                if (temp->tipo == "Orco") {
-                    if (contador == indiceAleatorio) {
-                        return temp;
-                    }
-                    contador++;
-                }
-                temp = temp->siguiente;
-            }
-            return nullptr;
-        }
-
-        void generarYDispersarOrcos(int cantRondas, listaEspecies& listaEspecies, Sala* salaOrigenOrcos) {
-            srand(static_cast<unsigned int>(time(0)) + cantRondas);
-            
-            int numOrcosGenerar = (rand() % 5) + 1;
-            
-            cout << "\n=== RONDA " << cantRondas << " ===\n";
-            cout << "Generando " << numOrcosGenerar << " orcos...\n";
-            
-            for (int i = 0; i < numOrcosGenerar; i++) {
-                if (salaOrigenOrcos->equipoOrcos.numMiembros < 15) {
-                    especie* orcoAleatorio = obtenerEspecieOrcoAleatoria(listaEspecies);
-                    if (orcoAleatorio != nullptr) {
-                        salaOrigenOrcos->equipoOrcos.miembros[salaOrigenOrcos->equipoOrcos.numMiembros] = orcoAleatorio;
-                        salaOrigenOrcos->equipoOrcos.numMiembros++;
-                        cout << "- " << orcoAleatorio->nombre << " generado en " << salaOrigenOrcos->nombre << "\n";
-                    }
-                }
-            }
-            dispersarOrcosAdyacentes(cantRondas);
-        }
-
-        void dispersarOrcosAdyacentes(int cantRondas) {
-            // Determinar número de ondas basado en el último dígito de la ronda
-            int ultimoDigito = cantRondas % 10;
-            int maxOndas;
-            
-            if (ultimoDigito == 0) {
-                maxOndas = 5;
-                cout << "Ronda " << cantRondas << " (ultimo digito " << ultimoDigito << "): 5 ondas de dispersion (SUPER EXPANSION!)\n";
-            } else if (ultimoDigito == 1 || ultimoDigito == 3 || ultimoDigito == 6 || ultimoDigito == 9) {
-                maxOndas = 3;
-                cout << "Ronda " << cantRondas << " (ultimo digito " << ultimoDigito << "): 3 ondas de dispersion\n";
-            } else if (ultimoDigito == 2 || ultimoDigito == 4 || ultimoDigito == 8) {
-                maxOndas = 2;
-                cout << "Ronda " << cantRondas << " (ultimo digito " << ultimoDigito << "): 2 ondas de dispersion\n";
-            } else { // Para 5 y 7
-                maxOndas = 1;
-                cout << "Ronda " << cantRondas << " (ultimo digito " << ultimoDigito << "): 1 onda de dispersion\n";
-            }
-            
-            for (int onda = 0; onda < maxOndas; onda++) {
-                cout << "--- Onda de dispersion " << (onda + 1) << " de " << maxOndas << " ---\n";
-                
-                // Lista temporal para almacenar movimientos de esta onda
-                struct MovimientoOrco {
-                    Sala* origen;
-                    Sala* destino;
-                    especie* orco;
-                };
-                MovimientoOrco movimientos[100]; // Asumiendo máximo 100 movimientos por onda
-                int numMovimientos = 0;
-                
-                // Fase 1: Planificar movimientos
-                Sala* actual = cabeza;
-                while (actual != nullptr) {
-                    if (actual->apto && actual->equipoOrcos.numMiembros > 0) {
-                        // Calcular cuántos orcos mover (más agresivo pero controlado)
-                        int orcosParaMover = max(1, actual->equipoOrcos.numMiembros / 2);
-                        
-                        // Crear lista de salas destino disponibles
-                        Sala* salasDestino[20];
-                        int numDestinos = 0;
-                        
-                        Adyacencia* ady = actual->adyacencias;
-                        while (ady != nullptr) {
-                            Sala* salaAdyacente = ady->salaDestino;
-                            if (salaAdyacente && salaAdyacente->apto && 
-                                salaAdyacente->equipoOrcos.numMiembros < 15) {
-                                salasDestino[numDestinos++] = salaAdyacente;
-                            }
-                            ady = ady->siguiente;
-                        }
-                        
-                        // Planificar movimientos para esta sala
-                        for (int i = 0; i < orcosParaMover && i < actual->equipoOrcos.numMiembros && numDestinos > 0; i++) {
-                            // Seleccionar destino (priorizar salas con menos orcos)
-                            Sala* mejorDestino = nullptr;
-                            int menorCantidad = 16; // Mayor que el límite
-                            
-                            for (int j = 0; j < numDestinos; j++) {
-                                if (salasDestino[j]->equipoOrcos.numMiembros < menorCantidad) {
-                                    menorCantidad = salasDestino[j]->equipoOrcos.numMiembros;
-                                    mejorDestino = salasDestino[j];
-                                }
-                            }
-                            
-                            if (mejorDestino && numMovimientos < 100) {
-                                movimientos[numMovimientos].origen = actual;
-                                movimientos[numMovimientos].destino = mejorDestino;
-                                movimientos[numMovimientos].orco = actual->equipoOrcos.miembros[i];
-                                numMovimientos++;
-                            }
-                        }
-                    }
-                    actual = actual->siguiente;
-                }
-                
-                // Fase 2: Ejecutar movimientos
-                for (int i = 0; i < numMovimientos; i++) {
-                    MovimientoOrco& mov = movimientos[i];
-                    
-                    // Verificar que el movimiento sigue siendo válido
-                    if (mov.destino->equipoOrcos.numMiembros < 15) {
-                        // Encontrar el orco en la sala origen
-                        for (int j = 0; j < mov.origen->equipoOrcos.numMiembros; j++) {
-                            if (mov.origen->equipoOrcos.miembros[j] == mov.orco) {
-                                // Remover orco de la sala origen
-                                for (int k = j; k < mov.origen->equipoOrcos.numMiembros - 1; k++) {
-                                    mov.origen->equipoOrcos.miembros[k] = mov.origen->equipoOrcos.miembros[k + 1];
-                                }
-                                mov.origen->equipoOrcos.numMiembros--;
-                                
-                                // Agregar orco a la sala destino
-                                mov.destino->equipoOrcos.miembros[mov.destino->equipoOrcos.numMiembros] = mov.orco;
-                                mov.destino->equipoOrcos.numMiembros++;
-                                
-                                cout << "- " << mov.orco->nombre << " se movio de " << mov.origen->nombre 
-                                    << " a " << mov.destino->nombre << " (Onda " << (onda + 1) << ")\n";
-                                break;
-                            }
-                        }
-                    }
-                }
-                
-                // Si no hay movimientos en esta onda, terminar
-                if (numMovimientos == 0) {
-                    cout << "No hay mas movimientos posibles en esta onda.\n";
-                    break;
-                }
-            }
-            
-            cout << "Dispersion completada.\n";
-        }
-
-        bool verificarEncuentroConOrcos(Sala* salaHeroes) {
-            if (salaHeroes && salaHeroes->equipoOrcos.numMiembros > 0) {
-                cout << "\n¡ALERTA! ¡Hay " << salaHeroes->equipoOrcos.numMiembros << " orcos en esta sala!\n";
-                cout << "Orcos presentes:\n";
-                for (int i = 0; i < salaHeroes->equipoOrcos.numMiembros; i++) {
-                    especie* orco = salaHeroes->equipoOrcos.miembros[i];
-                    cout << "- " << orco->nombre << " (Ataque: " << orco->ataque << ", Salud: " << orco->salud << ")\n";
-                }
-                return true;
-            }
-            return false;
-        }
-
-        void mostrarDistribucionOrcos() {
-            cout << "\n=== Distribución de Orcos por Sala ===\n";
-            cout << left << setw(5) << "ID" 
-                << setw(30) << "Nombre de Sala" 
-                << setw(15) << "Num. Orcos" 
-                << setw(30) << "Tipos de Orcos" << endl;
-            cout << string(80, '-') << endl;
-            
-            Sala* actual = cabeza;
-            while (actual != nullptr) {
-                if (actual->apto) {
-                    cout << left << setw(5) << actual->id 
-                        << setw(30) << actual->nombre 
-                        << setw(15) << actual->equipoOrcos.numMiembros;
-                    
-                    if (actual->equipoOrcos.numMiembros > 0) {
-                        string tiposOrcos = "";
-                        for (int i = 0; i < actual->equipoOrcos.numMiembros; i++) {
-                            tiposOrcos += actual->equipoOrcos.miembros[i]->nombre;
-                            if (i < actual->equipoOrcos.numMiembros - 1) {
-                                tiposOrcos += ", ";
-                            }
-                        }
-                        cout << setw(30) << tiposOrcos;
-                    } else {
-                        cout << setw(30) << "Ninguno";
-                    }
-                    cout << endl;
-                }
-                actual = actual->siguiente;
-            }
-            cout << string(80, '-') << endl;
-        }
-    };
+};
 
 //Funciones del Juego
 bool verificarVictoria(Sala* salaHeroes) {
@@ -2294,6 +2091,7 @@ bool verificarVictoria(Sala* salaHeroes) {
     }
     return false;
 }
+
 void elegirEquipo(listaEquipos& listaEquipos, listaPersonajes& listaPersonajes, equipo*& equipoSeleccionado) {
     int opcion;
     bool equipoValido = false;
@@ -2320,6 +2118,375 @@ void elegirEquipo(listaEquipos& listaEquipos, listaPersonajes& listaPersonajes, 
         }
     }
 }
+void asignarImplementosAEquipo(equipo& equipoSeleccionado, listaImplementos& listaImplementos) {
+    cout << "--------------------------------------------------\n";
+    cout << " Asigna implementos a los personajes de tu equipo\n";
+    cout << "--------------------------------------------------\n";
+
+    for (int i = 0; i < equipoSeleccionado.numPjs; i++) {
+        personaje* pj = equipoSeleccionado.personajes[i];
+        
+        cout << "-----------------------------------------\n";
+        cout << "Personaje: " << pj->nombre << " (" << pj->especie->nombre << ")\n";
+        cout << "-----------------------------------------\n";
+
+        int agregarOtro = 1;
+        while (agregarOtro == 1) {
+            cout << "\nImplementos disponibles:\n";
+            cout << left << setw(5) << "No." 
+                 << setw(20) << "Nombre"
+                 << setw(12) << "Tipo"
+                 << setw(10) << "Valor"
+                 << setw(10) << "Usos"
+                 << setw(12) << "Fortaleza" << endl;
+            cout << "---------------------------------------------------------------\n";
+
+            int disponibles = 0;
+            for (int j = 0; j < listaImplementos.obtenerCantidad(); j++) {
+                implemento* imp = listaImplementos.obtenerImplemento(j);
+                if (!imp->enUso) {
+                    cout << left << setw(5) << j 
+                         << setw(20) << imp->nombre 
+                         << setw(12) << imp->tipo;
+
+                    if (imp->tipo == "atacar") cout << setw(10) << imp->valorAtk;
+                    else if (imp->tipo == "defender") cout << setw(10) << imp->valorDef;
+                    else if (imp->tipo == "curar") cout << setw(10) << imp->valorHeal;
+                    else cout << setw(10) << "-";
+
+                    cout << setw(10) << imp->usos 
+                         << setw(12) << imp->fortaleza << endl;
+                    disponibles++;
+                }
+            }
+
+            if (disponibles == 0) {
+                cout << "No hay más implementos disponibles.\n";
+                break;
+            }
+
+            cout << "\nSelecciona el número del implemento: ";
+            int index = leerOpcion();
+
+            implemento* seleccionado = listaImplementos.obtenerImplemento(index);
+            if (seleccionado && !seleccionado->enUso) {
+                pj->mochila.agregarImplementoAMochila(seleccionado);
+                cout << ">> '" << seleccionado->nombre << "' asignado a " << pj->nombre << ".\n";
+            } else {
+                cout << "Índice inválido o implemento ya en uso.\n";
+            }
+
+            cout << "¿Asignar otro implemento a " << pj->nombre << "? (1 = Sí, 0 = No): ";
+            agregarOtro = leerOpcion();
+        }
+    }
+
+    cout << " Implementos asignados exitosamente.\n";
+    cout << "-------------------------------------\n";
+}
+
+especie* obtenerEspecieOrcoAleatoria(listaEspecies& listaEspecies) {
+    int contadorOrcos = 0;
+    especie* temp = listaEspecies.obtenerCabeza();
+    while (temp != nullptr) {
+        if (temp->tipo == "Orco") {
+            contadorOrcos++;
+        }
+        temp = temp->siguiente;
+    }
+    
+    if (contadorOrcos == 0) return nullptr;
+    
+    int indiceAleatorio = rand() % contadorOrcos;
+    temp = listaEspecies.obtenerCabeza();
+    int contador = 0;
+    
+    while (temp != nullptr) {
+        if (temp->tipo == "Orco") {
+            if (contador == indiceAleatorio) {
+                return temp;
+            }
+            contador++;
+        }
+        temp = temp->siguiente;
+    }
+    return nullptr;
+}
+void dispersarOrcosAdyacentes(int cantRondas, Sala* cabezaSalas, Sala* salaHeroes) {
+    cout << "\n=== RONDA " << cantRondas << " - Movimiento de Orcos hacia Heroes ===\n";
+    
+    if (!salaHeroes) {
+        cout << "No se puede determinar la posicion de los heroes.\n";
+        return;
+    }
+    
+    // Estructura para almacenar orcos con sus distancias a los héroes
+    struct OrcoConDistancia {
+        Sala* salaOrco;
+        especie* orco;
+        int indiceEnSala;
+        int distanciaAHeroes;
+        Sala* siguienteSala; // Próxima sala en el camino hacia los héroes
+    };
+    
+    OrcoConDistancia orcosDisponibles[200]; // Máximo orcos en todas las salas
+    int numOrcosDisponibles = 0;
+    
+    // Fase 1: Recopilar todos los orcos y calcular sus distancias a los héroes
+    Sala* salaActual = cabezaSalas;
+    while (salaActual != nullptr) {
+        if (salaActual->apto && salaActual->equipoOrcos.numMiembros > 0) {
+            // Calcular distancia de esta sala a los héroes usando BFS
+            int distanciaAHeroes = INT_MAX;
+            Sala* siguienteSalaEnCamino = nullptr;
+            
+            // BFS para encontrar el camino más corto a los héroes
+            Sala* cola[100];
+            Sala* padres[100];
+            int distancias[100];
+            bool visitado[100];
+            int frente = 0, final = 0;
+            
+            // Inicializar arrays
+            for (int i = 0; i < 100; i++) {
+                visitado[i] = false;
+                padres[i] = nullptr;
+                distancias[i] = INT_MAX;
+            }
+            
+            // Mapear salas a índices (simplificado)
+            Sala* todasLasSalas[100];
+            int numSalas = 0;
+            Sala* temp = cabezaSalas;
+            while (temp != nullptr && numSalas < 100) {
+                todasLasSalas[numSalas] = temp;
+                if (temp == salaActual) {
+                    cola[final] = temp;
+                    distancias[numSalas] = 0;
+                    visitado[numSalas] = true;
+                    final++;
+                }
+                temp = temp->siguiente;
+                numSalas++;
+            }
+            
+            // BFS
+            while (frente < final) {
+                Sala* actual = cola[frente++];
+                
+                // Encontrar índice de la sala actual
+                int indiceActual = -1;
+                for (int i = 0; i < numSalas; i++) {
+                    if (todasLasSalas[i] == actual) {
+                        indiceActual = i;
+                        break;
+                    }
+                }
+                
+                if (actual == salaHeroes) {
+                    distanciaAHeroes = distancias[indiceActual];
+                    
+                    // Reconstruir camino para encontrar la siguiente sala
+                    if (padres[indiceActual] != nullptr) {
+                        Sala* nodoActual = actual;
+                        while (padres[indiceActual] != salaActual) {
+                            nodoActual = padres[indiceActual];
+                            // Encontrar nuevo índice
+                            for (int i = 0; i < numSalas; i++) {
+                                if (todasLasSalas[i] == nodoActual) {
+                                    indiceActual = i;
+                                    break;
+                                }
+                            }
+                        }
+                        siguienteSalaEnCamino = nodoActual;
+                    }
+                    break;
+                }
+                
+                // Explorar adyacencias
+                Adyacencia* ady = actual->adyacencias;
+                while (ady != nullptr) {
+                    Sala* vecina = ady->salaDestino;
+                    if (vecina && vecina->apto) {
+                        // Encontrar índice de la sala vecina
+                        int indiceVecina = -1;
+                        for (int i = 0; i < numSalas; i++) {
+                            if (todasLasSalas[i] == vecina) {
+                                indiceVecina = i;
+                                break;
+                            }
+                        }
+                        
+                        if (indiceVecina != -1 && !visitado[indiceVecina]) {
+                            visitado[indiceVecina] = true;
+                            distancias[indiceVecina] = distancias[indiceActual] + ady->distancia;
+                            padres[indiceVecina] = actual;
+                            cola[final++] = vecina;
+                        }
+                    }
+                    ady = ady->siguiente;
+                }
+            }
+            
+            // Agregar todos los orcos de esta sala a la lista
+            for (int i = 0; i < salaActual->equipoOrcos.numMiembros && numOrcosDisponibles < 200; i++) {
+                orcosDisponibles[numOrcosDisponibles].salaOrco = salaActual;
+                orcosDisponibles[numOrcosDisponibles].orco = salaActual->equipoOrcos.miembros[i];
+                orcosDisponibles[numOrcosDisponibles].indiceEnSala = i;
+                orcosDisponibles[numOrcosDisponibles].distanciaAHeroes = distanciaAHeroes;
+                orcosDisponibles[numOrcosDisponibles].siguienteSala = siguienteSalaEnCamino;
+                numOrcosDisponibles++;
+            }
+        }
+        salaActual = salaActual->siguiente;
+    }
+    
+    // Fase 2: Ordenar orcos por distancia (los más cercanos primero)
+    for (int i = 0; i < numOrcosDisponibles - 1; i++) {
+        for (int j = 0; j < numOrcosDisponibles - i - 1; j++) {
+            if (orcosDisponibles[j].distanciaAHeroes > orcosDisponibles[j + 1].distanciaAHeroes) {
+                OrcoConDistancia temp = orcosDisponibles[j];
+                orcosDisponibles[j] = orcosDisponibles[j + 1];
+                orcosDisponibles[j + 1] = temp;
+            }
+        }
+    }
+    
+    // Fase 3: Mover máximo 5 orcos más cercanos
+    int orcosMovidos = 0;
+    int maxOrcosAMover = 5;
+    
+    cout << "Moviendo los " << min(maxOrcosAMover, numOrcosDisponibles) << " orcos mas cercanos hacia los heroes...\n";
+    
+    for (int i = 0; i < numOrcosDisponibles && orcosMovidos < maxOrcosAMover; i++) {
+        OrcoConDistancia& orcoActual = orcosDisponibles[i];
+        
+        // Verificar que el orco aún existe en su sala original
+        bool orcoExiste = false;
+        int indiceReal = -1;
+        for (int j = 0; j < orcoActual.salaOrco->equipoOrcos.numMiembros; j++) {
+            if (orcoActual.salaOrco->equipoOrcos.miembros[j] == orcoActual.orco) {
+                orcoExiste = true;
+                indiceReal = j;
+                break;
+            }
+        }
+        
+        if (!orcoExiste) {
+            continue; // El orco ya fue movido
+        }
+        
+        // Si el orco ya está en la sala de los héroes, no moverlo
+        if (orcoActual.salaOrco == salaHeroes) {
+            cout << "- " << orcoActual.orco->nombre << " ya esta en la sala de los heroes\n";
+            continue;
+        }
+        
+        // Si no hay siguiente sala en el camino, el orco no puede moverse
+        if (!orcoActual.siguienteSala) {
+            cout << "- " << orcoActual.orco->nombre << " no puede encontrar camino hacia los heroes\n";
+            continue;
+        }
+        
+        // Verificar que la sala destino no esté llena
+        if (orcoActual.siguienteSala->equipoOrcos.numMiembros >= 15) {
+            cout << "- " << orcoActual.orco->nombre << " no puede moverse: sala destino llena\n";
+            continue;
+        }
+        
+        // Mover el orco
+        // Remover de sala origen
+        for (int j = indiceReal; j < orcoActual.salaOrco->equipoOrcos.numMiembros - 1; j++) {
+            orcoActual.salaOrco->equipoOrcos.miembros[j] = orcoActual.salaOrco->equipoOrcos.miembros[j + 1];
+        }
+        orcoActual.salaOrco->equipoOrcos.numMiembros--;
+        
+        // Agregar a sala destino
+        orcoActual.siguienteSala->equipoOrcos.miembros[orcoActual.siguienteSala->equipoOrcos.numMiembros] = orcoActual.orco;
+        orcoActual.siguienteSala->equipoOrcos.numMiembros++;
+        
+        cout << "- " << orcoActual.orco->nombre << " se movio de " << orcoActual.salaOrco->nombre 
+             << " hacia " << orcoActual.siguienteSala->nombre << " (distancia a heroes: " 
+             << orcoActual.distanciaAHeroes << ")\n";
+        
+        orcosMovidos++;
+    }
+    
+    if (orcosMovidos == 0) {
+        cout << "No se pudieron mover orcos hacia los heroes en esta ronda.\n";
+    } else {
+        cout << "Se movieron " << orcosMovidos << " orcos hacia los heroes.\n";
+    }
+    
+    cout << "Movimiento de orcos completado.\n";
+}
+void generarYDispersarOrcos(int cantRondas, listaEspecies& listaEspecies, Sala* salaOrigenOrcos, Sala* cabezaSalas, Sala* salaHeroes) {
+    srand(static_cast<unsigned int>(time(0)) + cantRondas);
+    
+    int numOrcosGenerar = (rand() % 5) + 1;
+    
+    cout << "\n=== RONDA " << cantRondas << " ===\n";
+    cout << "Generando " << numOrcosGenerar << " orcos...\n";
+    
+    for (int i = 0; i < numOrcosGenerar; i++) {
+        if (salaOrigenOrcos->equipoOrcos.numMiembros < 15) {
+            especie* orcoAleatorio = obtenerEspecieOrcoAleatoria(listaEspecies);
+            if (orcoAleatorio != nullptr) {
+                salaOrigenOrcos->equipoOrcos.miembros[salaOrigenOrcos->equipoOrcos.numMiembros] = orcoAleatorio;
+                salaOrigenOrcos->equipoOrcos.numMiembros++;
+                cout << "- " << orcoAleatorio->nombre << " generado en " << salaOrigenOrcos->nombre << "\n";
+            }
+        }
+    }
+    dispersarOrcosAdyacentes(cantRondas, cabezaSalas, salaHeroes);
+}
+bool verificarEncuentroConOrcos(Sala* salaHeroes) {
+    if (salaHeroes && salaHeroes->equipoOrcos.numMiembros > 0) {
+        cout << "\n¡ALERTA! ¡Hay " << salaHeroes->equipoOrcos.numMiembros << " orcos en esta sala!\n";
+        cout << "Orcos presentes:\n";
+        for (int i = 0; i < salaHeroes->equipoOrcos.numMiembros; i++) {
+            especie* orco = salaHeroes->equipoOrcos.miembros[i];
+            cout << "- " << orco->nombre << " (Ataque: " << orco->ataque << ", Salud: " << orco->salud << ")\n";
+        }
+        return true;
+    }
+    return false;
+}
+void mostrarDistribucionOrcos(Sala* cabezaSalas) {
+    cout << "\n=== Distribución de Orcos por Sala ===\n";
+    cout << left << setw(5) << "ID" 
+        << setw(30) << "Nombre de Sala" 
+        << setw(15) << "Num. Orcos" 
+        << setw(30) << "Tipos de Orcos" << endl;
+    cout << string(80, '-') << endl;
+    
+    Sala* actual = cabezaSalas;
+    while (actual != nullptr) {
+        if (actual->apto) {
+            cout << left << setw(5) << actual->id 
+                << setw(30) << actual->nombre 
+                << setw(15) << actual->equipoOrcos.numMiembros;
+            
+            if (actual->equipoOrcos.numMiembros > 0) {
+                string tiposOrcos = "";
+                for (int i = 0; i < actual->equipoOrcos.numMiembros; i++) {
+                    tiposOrcos += actual->equipoOrcos.miembros[i]->nombre;
+                    if (i < actual->equipoOrcos.numMiembros - 1) {
+                        tiposOrcos += ", ";
+                    }
+                }
+                cout << setw(30) << tiposOrcos;
+            } else {
+                cout << setw(30) << "Ninguno";
+            }
+            cout << endl;
+        }
+        actual = actual->siguiente;
+    }
+    cout << string(80, '-') << endl;
+}
+
 int calcularRapidezEquipo(equipo& equipoSeleccionado) {
     int rapidezMinima = INT_MAX;
     for (int i = 0; i < equipoSeleccionado.numPjs; i++) {
@@ -2356,8 +2523,97 @@ int moverHeroes(listaSalas& listaSalas, equipo& equipoSeleccionado, Sala*& salaH
         return 0;
     }
     
-    cout << "Selecciona el ID de la sala a la que deseas moverte: ";
-    int idSeleccionada = leerOpcion();
+    // Bucle de validación para el ID de sala
+    int idSeleccionada = -1;
+    bool movimientoValido = false;
+    
+    while (!movimientoValido) {
+        cout << "Selecciona el ID de la sala a la que deseas moverte (0 para cancelar): ";
+        idSeleccionada = leerOpcion();
+        
+        // Opción para cancelar
+        if (idSeleccionada == 0) {
+            cout << "Movimiento cancelado." << endl;
+            return 0;
+        }
+        
+        // Verificar si el ID es válido y alcanzable
+        bool idValido = false;
+        
+        // Primero verificar salas adyacentes directas
+        Adyacencia* adyDirecta = salaHeroes->adyacencias;
+        while (adyDirecta != nullptr) {
+            if (adyDirecta->salaDestino->id == idSeleccionada && adyDirecta->distancia <= rapidezEquipo) {
+                idValido = true;
+                movimientoValido = true;
+                break;
+            }
+            adyDirecta = adyDirecta->siguiente;
+        }
+        
+        // Si no es adyacente directo, verificar con BFS
+        if (!idValido) {
+            // Usar BFS para verificar si es alcanzable
+            Sala* visitadas[100];
+            int distancias[100];
+            int numVisitadas = 0;
+            
+            Sala* cola[100];
+            int distanciasCola[100];
+            int frente = 0, final = 0;
+            
+            cola[final] = salaHeroes;
+            distanciasCola[final] = 0;
+            final++;
+            
+            visitadas[numVisitadas] = salaHeroes;
+            distancias[numVisitadas] = 0;
+            numVisitadas++;
+            
+            while (frente < final && !idValido) {
+                Sala* actual = cola[frente];
+                int distanciaActual = distanciasCola[frente];
+                frente++;
+                
+                if (actual->id == idSeleccionada) {
+                    idValido = true;
+                    movimientoValido = true;
+                    break;
+                }
+                
+                Adyacencia* ady = actual->adyacencias;
+                while (ady != nullptr) {
+                    Sala* vecina = ady->salaDestino;
+                    int nuevaDistancia = distanciaActual + ady->distancia;
+                    
+                    bool yaVisitada = false;
+                    for (int i = 0; i < numVisitadas; i++) {
+                        if (visitadas[i] == vecina) {
+                            yaVisitada = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!yaVisitada && nuevaDistancia <= rapidezEquipo) {
+                        visitadas[numVisitadas] = vecina;
+                        distancias[numVisitadas] = nuevaDistancia;
+                        numVisitadas++;
+                        
+                        cola[final] = vecina;
+                        distanciasCola[final] = nuevaDistancia;
+                        final++;
+                    }
+                    ady = ady->siguiente;
+                }
+            }
+        }
+        
+        if (!idValido) {
+            cout << "\n¡ERROR! El ID " << idSeleccionada << " no es válido o no es alcanzable con tu rapidez actual." << endl;
+            cout << "Por favor, selecciona un ID de las salas mostradas en el mapa." << endl;
+            cout << "Salas alcanzables:" << endl;
+        }
+    }
     
     // Buscar la sala destino directamente en las adyacencias primero
     Adyacencia* adyDirecta = salaHeroes->adyacencias;
@@ -2376,7 +2632,7 @@ int moverHeroes(listaSalas& listaSalas, equipo& equipoSeleccionado, Sala*& salaH
     if (esAdyacenteDirecto) {
         // Movimiento directo a sala adyacente
         salaHeroes = adyDirecta->salaDestino;
-        turnosExtra = 0; // NO generar turnos extra para 1 sala
+        turnosExtra = 0;
         
         cout << "Te has movido directamente a: " << salaHeroes->nombre << endl;
         cout << "Distancia recorrida: " << distanciaDirecta << endl;
@@ -2386,11 +2642,7 @@ int moverHeroes(listaSalas& listaSalas, equipo& equipoSeleccionado, Sala*& salaH
         // Generar orcos DESPUÉS del movimiento para el turno principal
         if (cantRondas >= 1) {
             cout << "\n--- Generación de orcos después del movimiento ---" << endl;
-            listaSalas.generarYDispersarOrcos(cantRondas, listaEspecies, salaOrcos);
-        }
-        
-        if (listaSalas.verificarEncuentroConOrcos(salaHeroes)) {
-            cout << "¡Encuentro con orcos! Debes luchar o huir." << endl;
+            generarYDispersarOrcos(cantRondas, listaEspecies, salaOrcos, listaSalas.obtenerCabeza(), salaHeroes);
         }
         
     } else {
@@ -2477,35 +2729,524 @@ int moverHeroes(listaSalas& listaSalas, equipo& equipoSeleccionado, Sala*& salaH
             // Generar orcos DESPUÉS del movimiento para el turno principal
             if (cantRondas >= 1) {
                 cout << "\n--- Generación de orcos después del movimiento principal ---" << endl;
-                listaSalas.generarYDispersarOrcos(cantRondas, listaEspecies, salaOrcos);
-            }
-            
-            if (listaSalas.verificarEncuentroConOrcos(salaHeroes)) {
-                cout << "¡Encuentro con orcos! Debes luchar o huir." << endl;
+                generarYDispersarOrcos(cantRondas, listaEspecies, salaOrcos, listaSalas.obtenerCabeza(), salaHeroes);
             }
             
             // Solo generar turnos extra si se recorrieron 2 o más salas
             if (salasDestino >= 2) {
                 cout << "Generando " << (salasDestino - 1) << " turnos extra..." << endl;
-                for (int i = 0; i < salasDestino - 1; i++) { // -1 porque el turno principal ya cuenta
+                for (int i = 0; i < salasDestino - 1; i++) {
                     cantRondas++;
                     cout << "\n--- Turno Extra " << cantRondas << " ---" << endl;
-                    listaSalas.generarYDispersarOrcos(cantRondas, listaEspecies, salaOrcos);
+                    generarYDispersarOrcos(cantRondas, listaEspecies, salaOrcos, listaSalas.obtenerCabeza(), salaHeroes);
                 }
             } else {
                 cout << "No se generan turnos extra (menos de 2 salas recorridas)" << endl;
             }
-        } else {
-            cout << "No puedes moverte a esa sala o no es alcanzable." << endl;
-            return 0;
         }
     }
     
     return turnosExtra;
 }
+
+void usarPoderMagico(listaEspecies& listaEspecies, listaSalas& listaSalas, listaImplementos& listaImplementos) {
+    int opcion;
+    cout << "\n=== Poderes Mágicos Disponibles ===\n";
+    cout << "1. Revivir y fortalecer enanos\n";
+    cout << "2. Mover orcos de una sala a otra\n";
+    cout << "3. Reducir salud de orcos en una sala a 1\n";
+    cout << "4. Duplicar ataque y reducir fortaleza de implementos\n";
+    cout << "Selecciona un poder mágico: ";
+    opcion = leerOpcion();
+    cout << "-----------------------------------\n";
+
+    switch (opcion) {
+        case 1: {
+            // Poder 1: Revivir y fortalecer enanos
+            especie* temp = listaEspecies.obtenerCabeza();
+            while (temp != nullptr) {
+                if (temp->nombre == "Enano" && temp->tipo == "Heroe") {
+                    temp->salud += 100;
+                    temp->fortaleza += 1000;
+                    cout << "¡Los enanos han sido revitalizados! Nueva salud: " << temp->salud
+                         << ", nueva fortaleza: " << temp->fortaleza << endl;
+                }
+                temp = temp->siguiente;
+            }
+            break;
+        }
+
+        case 2: {
+            // Poder 2: Mover orcos de una sala a otra
+            listaSalas.mostrarSalas();
+            cout << "ID de la sala ORIGEN (donde están los orcos): ";
+            int idOrigen = leerOpcion();
+            Sala* salaOrigen = listaSalas.obtenerSalaPorId(idOrigen);
+
+            cout << "ID de la sala DESTINO (a donde se moverán los orcos): ";
+            int idDestino = leerOpcion();
+            Sala* salaDestino = listaSalas.obtenerSalaPorId(idDestino);
+
+            if (!salaOrigen || !salaDestino) {
+                cout << "Una o ambas salas no existen.\n";
+                return;
+            }
+
+            int orcosMovidos = salaOrigen->equipoOrcos.numMiembros;
+            for (int i = 0; i < orcosMovidos && salaDestino->equipoOrcos.numMiembros < 15; i++) {
+                salaDestino->equipoOrcos.miembros[salaDestino->equipoOrcos.numMiembros++] =
+                    salaOrigen->equipoOrcos.miembros[i];
+            }
+            salaOrigen->equipoOrcos.numMiembros = 0;
+            cout << "Se han movido " << orcosMovidos << " orcos de " << salaOrigen->nombre
+                 << " a " << salaDestino->nombre << ".\n";
+            break;
+        }
+
+        case 3: {
+            // Poder 3: Reducir salud de todos los orcos de una sala a 1
+            listaSalas.mostrarSalas();
+            cout << "ID de la sala donde reducir la salud de los orcos: ";
+            int id = leerOpcion();
+            Sala* sala = listaSalas.obtenerSalaPorId(id);
+            if (!sala) {
+                cout << "Sala no encontrada.\n";
+                return;
+            }
+
+            for (int i = 0; i < sala->equipoOrcos.numMiembros; i++) {
+                sala->equipoOrcos.miembros[i]->salud = 1;
+            }
+            cout << "Todos los orcos en la sala " << sala->nombre << " tienen ahora 1 de salud.\n";
+            break;
+        }
+
+        case 4: {
+            // Poder 4: Duplicar ataque y reducir fortaleza a 0
+            int total = listaImplementos.obtenerCantidad();
+            for (int i = 0; i < total; i++) {
+                implemento* imp = listaImplementos.obtenerImplemento(i);
+                if (imp->tipo == "atacar") {
+                    imp->valorAtk *= 2;
+                    imp->fortaleza = 0;
+                }
+            }
+            cout << "¡Los implementos de ataque ahora hacen el doble de daño y no requieren fortaleza!\n";
+            break;
+        }
+
+        default:
+            cout << "Opción inválida.\n";
+    }
+}
+
+// Estructura para manejar estadisticas de combate
+struct EstadisticasCombate {
+    personaje* personajeRef;  // Referencia al personaje del equipo
+    double saludActual;
+    double fortalezaActual;
+    double fortalezaInicial;
+    bool puedeActuar;
+    int rondasSinCombate;     // Para recuperación de fortaleza
+
+    EstadisticasCombate(personaje* pj) {
+        personajeRef = pj;
+        saludActual = pj->especie->salud;
+        fortalezaActual = pj->especie->fortaleza;
+        fortalezaInicial = pj->especie->fortaleza;
+        puedeActuar = true;
+        rondasSinCombate = 0;
+    }
+    
+    // Función para recuperar fortaleza entre rondas sin combate
+    void recuperarFortaleza() {
+        if (fortalezaActual < fortalezaInicial) {
+            fortalezaActual = min(fortalezaInicial, fortalezaActual * 1.1);
+            rondasSinCombate++;
+        }
+    }
+};
+void armarBatalla(listaSalas& listaSalas, equipo& equipoHeroes, Sala*& salaActual, int& cantRondas) {
+    cout << "\n=== ¡COMBATE INICIADO! ===" << endl;
+    
+    // Crear estadísticas de combate para héroes
+    EstadisticasCombate* estadisticasHeroes[4];
+    int numHeroesVivos = 0;
+    
+    for (int i = 0; i < equipoHeroes.numPjs; i++) {
+        personaje* heroe = equipoHeroes.personajes[i];
+        if (heroe && heroe->especie) {
+            estadisticasHeroes[numHeroesVivos] = new EstadisticasCombate(heroe);
+            numHeroesVivos++;
+        }
+    }
+    
+    // Crear estadísticas de combate para orcos
+    EstadisticasCombate* estadisticasOrcos[15];
+    int numOrcosVivos = salaActual->equipoOrcos.numMiembros;
+    
+    for (int i = 0; i < numOrcosVivos; i++) {
+        especie* orco = salaActual->equipoOrcos.miembros[i];
+        if (orco) {
+            // Crear un personaje temporal para el orco
+            personaje* orcoTemp = new personaje();
+            orcoTemp->especie = orco;
+            orcoTemp->nombre = orco->nombre;
+            estadisticasOrcos[i] = new EstadisticasCombate(orcoTemp);
+        }
+    }
+    
+    // Verificar proporción 3:1 para opción de huida
+    if (numOrcosVivos >= numHeroesVivos * 3) {
+        cout << "\n¡ALERTA! Los orcos superan en proporción 3:1 a tu equipo." << endl;
+        cout << "Opciones disponibles:" << endl;
+        cout << "1. Huir a la sala con menor distancia" << endl;
+        cout << "2. Continuar con el combate" << endl;
+        cout << "Selecciona una opción: ";
+        
+        int opcionHuida = leerOpcion();
+        
+        if (opcionHuida == 1) {
+            // Buscar sala adyacente con menor distancia
+            Adyacencia* ady = salaActual->adyacencias;
+            Sala* salaMasCercana = nullptr;
+            int menorDistancia = INT_MAX;
+            
+            while (ady != nullptr) {
+                if (ady->distancia < menorDistancia) {
+                    menorDistancia = ady->distancia;
+                    salaMasCercana = ady->salaDestino;
+                }
+                ady = ady->siguiente;
+            }
+            
+            if (salaMasCercana) {
+                cout << "¡Has huido exitosamente a " << salaMasCercana->nombre << "!" << endl;
+                salaActual = salaMasCercana;
+                
+                // Limpiar memoria
+                for (int i = 0; i < numHeroesVivos; i++) {
+                    delete estadisticasHeroes[i];
+                }
+                for (int i = 0; i < numOrcosVivos; i++) {
+                    delete estadisticasOrcos[i]->personajeRef;
+                    delete estadisticasOrcos[i];
+                }
+                return;
+            } else {
+                cout << "No hay salas adyacentes para huir. ¡Debes luchar!" << endl;
+            }
+        }
+    }
+    
+    // Bucle principal de combate
+    bool combateActivo = true;
+    int turno = 1;
+    
+    while (combateActivo && numHeroesVivos > 0 && numOrcosVivos > 0) {
+        cout << "\n=== TURNO " << turno << " ===" << endl;
+        
+        // Turno de los héroes (atacan primero)
+        for (int i = 0; i < numHeroesVivos && numOrcosVivos > 0; i++) {
+            personaje* heroeActual = estadisticasHeroes[i]->personajeRef;
+            if (!heroeActual || !estadisticasHeroes[i]->puedeActuar || estadisticasHeroes[i]->saludActual <= 0) {
+                continue;
+            }
+            
+            cout << "\n--- Turno de " << heroeActual->nombre << " ---" << endl;
+            cout << "Salud: " << estadisticasHeroes[i]->saludActual << "/" << heroeActual->especie->salud << endl;
+            cout << "Fortaleza: " << estadisticasHeroes[i]->fortalezaActual << "/" << estadisticasHeroes[i]->fortalezaInicial << endl;
+            
+            cout << "\nOpciones de combate:" << endl;
+            cout << "1. Atacar" << endl;
+            cout << "2. Curar" << endl;
+            cout << "3. Usar poder mágico (Reservado)" << endl;
+            cout << "Selecciona una opción: ";
+            
+            int accion = leerOpcion();
+            
+            switch (accion) {
+                case 1: { // Atacar
+                    cout << "\nTipo de ataque:" << endl;
+                    cout << "1. Ataque normal" << endl;
+                    cout << "2. Usar arma" << endl;
+                    cout << "Selecciona: ";
+                    
+                    int tipoAtaque = leerOpcion();
+                    double danoInfligido = 0;
+                    
+                    if (tipoAtaque == 1) {
+                        // Ataque normal con daño de la fortaleza actual
+                        danoInfligido = estadisticasHeroes[i]->fortalezaActual;
+                        cout << "Ataque normal realizado. Daño: " << danoInfligido << endl;
+                    } else if (tipoAtaque == 2) {
+                        // Usar arma de la mochila
+                        cout << "\nArmas disponibles en la mochila:" << endl;
+                        bool tieneArmas = false;
+                        
+                        for (int j = 0; j < heroeActual->mochila.numImplementos; j++) {
+                            implemento* imp = heroeActual->mochila.implementos[j];
+                            if (imp && imp->tipo == "atacar" && imp->usos > 0) {
+                                cout << (j + 1) << ". " << imp->nombre << " (Daño: " << imp->valorAtk << ", Usos: " << imp->usos << ")" << endl;
+                                tieneArmas = true;
+                            }
+                        }
+                        
+                        if (tieneArmas) {
+                            cout << "Selecciona el arma (0 para cancelar): ";
+                            int selArma = leerOpcion();
+                            
+                            if (selArma > 0 && selArma <= heroeActual->mochila.numImplementos) {
+                                implemento* armaSeleccionada = heroeActual->mochila.implementos[selArma - 1];
+                                if (armaSeleccionada && armaSeleccionada->tipo == "atacar" && armaSeleccionada->usos > 0) {
+                                    danoInfligido = armaSeleccionada->valorAtk;
+                                    armaSeleccionada->usos--;
+                                    estadisticasHeroes[i]->fortalezaActual *= 0.9; // Reducir fortaleza 10%
+                                    
+                                    cout << "Usaste " << armaSeleccionada->nombre << ". Daño: " << danoInfligido << endl;
+                                    cout << "Usos restantes: " << armaSeleccionada->usos << endl;
+                                    cout << "Tu fortaleza se redujo a: " << estadisticasHeroes[i]->fortalezaActual << endl;
+                                } else {
+                                    cout << "Arma no válida. Ataque perdido." << endl;
+                                    continue;
+                                }
+                            } else {
+                                cout << "Ataque cancelado." << endl;
+                                continue;
+                            }
+                        } else {
+                            cout << "No tienes armas disponibles. Usando ataque normal." << endl;
+                            danoInfligido = estadisticasHeroes[i]->fortalezaActual;
+                        }
+                    }
+                    
+                    // Seleccionar objetivo (orco más débil en salud, luego fortaleza, luego al azar)
+                    int objetivoOrco = -1;
+                    double menorSalud = DBL_MAX;
+                    
+                    for (int j = 0; j < numOrcosVivos; j++) {
+                        if (estadisticasOrcos[j]->saludActual > 0 && estadisticasOrcos[j]->saludActual < menorSalud) {
+                            menorSalud = estadisticasOrcos[j]->saludActual;
+                            objetivoOrco = j;
+                        }
+                    }
+                    
+                    if (objetivoOrco != -1) {
+                        estadisticasOrcos[objetivoOrco]->saludActual -= danoInfligido;
+                        cout << "Atacaste a " << salaActual->equipoOrcos.miembros[objetivoOrco]->nombre 
+                             << " causando " << danoInfligido << " de daño." << endl;
+                        cout << "Salud del orco: " << estadisticasOrcos[objetivoOrco]->saludActual << endl;
+                        
+                        if (estadisticasOrcos[objetivoOrco]->saludActual <= 0) {
+                            cout << "¡" << salaActual->equipoOrcos.miembros[objetivoOrco]->nombre << " ha muerto!" << endl;
+                        }
+                    }
+                    break;
+                }
+                
+                case 2: { // Curar
+                    cout << "\nConsumibles disponibles en la mochila:" << endl;
+                    bool tieneConsumibles = false;
+                    
+                    for (int j = 0; j < heroeActual->mochila.numImplementos; j++) {
+                        implemento* imp = heroeActual->mochila.implementos[j];
+                        if (imp && imp->tipo == "curar" && imp->usos > 0) {
+                            cout << (j + 1) << ". " << imp->nombre << " (Curación: " << imp->valorHeal << ", Usos: " << imp->usos << ")" << endl;
+                            tieneConsumibles = true;
+                        }
+                    }
+                    
+                    if (tieneConsumibles) {
+                        cout << "Selecciona el consumible (0 para cancelar): ";
+                        int selConsumible = leerOpcion();
+                        
+                        if (selConsumible > 0 && selConsumible <= heroeActual->mochila.numImplementos) {
+                            implemento* consumibleSeleccionado = heroeActual->mochila.implementos[selConsumible - 1];
+                            if (consumibleSeleccionado && consumibleSeleccionado->tipo == "curar" && consumibleSeleccionado->usos > 0) {
+                                estadisticasHeroes[i]->saludActual += consumibleSeleccionado->valorHeal;
+                                if (estadisticasHeroes[i]->saludActual > heroeActual->especie->salud) {
+                                    estadisticasHeroes[i]->saludActual = heroeActual->especie->salud;
+                                }
+                                consumibleSeleccionado->usos--;
+                                
+                                cout << "Usaste " << consumibleSeleccionado->nombre << ". Salud restaurada: " << consumibleSeleccionado->valorHeal << endl;
+                                cout << "Salud actual: " << estadisticasHeroes[i]->saludActual << endl;
+                                cout << "Usos restantes: " << consumibleSeleccionado->usos << endl;
+                            }
+                        }
+                    } else {
+                        cout << "No tienes consumibles disponibles." << endl;
+                    }
+                    break;
+                }
+                
+                case 3: { // Poder mágico (reservado)
+                    cout << "Poder mágico no implementado aún." << endl;
+                    break;
+                }
+                
+                default:
+                    cout << "Opción no válida. Turno perdido." << endl;
+                    break;
+            }
+        }
+        
+        // Contar orcos vivos
+        int orcosVivosActuales = 0;
+        for (int i = 0; i < numOrcosVivos; i++) {
+            if (estadisticasOrcos[i]->saludActual > 0) {
+                orcosVivosActuales++;
+            }
+        }
+        numOrcosVivos = orcosVivosActuales;
+        
+        if (numOrcosVivos == 0) {
+            cout << "\n¡VICTORIA! ¡Todos los orcos han sido derrotados!" << endl;
+            break;
+        }
+        
+        // Turno de los orcos
+        cout << "\n--- Turno de los Orcos ---" << endl;
+        for (int i = 0; i < salaActual->equipoOrcos.numMiembros && numHeroesVivos > 0; i++) {
+            if (estadisticasOrcos[i]->saludActual <= 0) {
+                continue;
+            }
+            
+            especie* orcoActual = salaActual->equipoOrcos.miembros[i];
+            
+            // Seleccionar objetivo héroe (menor salud, luego al azar)
+            int objetivoHeroe = -1;
+            double menorSaludHeroe = DBL_MAX;
+            
+            for (int j = 0; j < numHeroesVivos; j++) {
+                if (estadisticasHeroes[j]->saludActual > 0 && estadisticasHeroes[j]->saludActual < menorSaludHeroe) {
+                    menorSaludHeroe = estadisticasHeroes[j]->saludActual;
+                    objetivoHeroe = j;
+                }
+            }
+            
+            if (objetivoHeroe != -1) {
+                personaje* heroeObjetivo = estadisticasHeroes[objetivoHeroe]->personajeRef;
+                double danoOrco = orcoActual->ataque;
+                
+                // Verificar si el héroe tiene implementos de defensa
+                bool tieneDefensa = false;
+                for (int j = 0; j < heroeObjetivo->mochila.numImplementos; j++) {
+                    implemento* imp = heroeObjetivo->mochila.implementos[j];
+                    if (imp && imp->tipo == "defender" && imp->usos > 0) {
+                        tieneDefensa = true;
+                        break;
+                    }
+                }
+                
+                if (tieneDefensa) {
+                    cout << "\n" << heroeObjetivo->nombre << " tiene implementos de defensa disponibles." << endl;
+                    cout << "¿Quieres usar un implemento de defensa?" << endl;
+                    cout << "1. Sí, usar defensa" << endl;
+                    cout << "2. No, recibir daño completo" << endl;
+                    cout << "Selecciona: ";
+                    
+                    int usarDefensa = leerOpcion();
+                    
+                    if (usarDefensa == 1) {
+                        cout << "\nImplementos de defensa disponibles:" << endl;
+                        for (int j = 0; j < heroeObjetivo->mochila.numImplementos; j++) {
+                            implemento* imp = heroeObjetivo->mochila.implementos[j];
+                            if (imp && imp->tipo == "defender" && imp->usos > 0) {
+                                cout << (j + 1) << ". " << imp->nombre << " (Defensa: " << imp->valorDef << ", Usos: " << imp->usos << ")" << endl;
+                            }
+                        }
+                        
+                        cout << "Selecciona el implemento de defensa: ";
+                        int selDefensa = leerOpcion();
+                        
+                        if (selDefensa > 0 && selDefensa <= heroeObjetivo->mochila.numImplementos) {
+                            implemento* defensaSeleccionada = heroeObjetivo->mochila.implementos[selDefensa - 1];
+                            if (defensaSeleccionada && defensaSeleccionada->tipo == "defender" && defensaSeleccionada->usos > 0) {
+                                double reduccionDano = (defensaSeleccionada->valorDef / 100.0) * danoOrco;
+                                danoOrco -= reduccionDano;
+                                if (danoOrco < 0) danoOrco = 0;
+                                
+                                defensaSeleccionada->usos--;
+                                
+                                cout << "Usaste " << defensaSeleccionada->nombre << ". Daño reducido en " << reduccionDano << endl;
+                                cout << "Usos restantes: " << defensaSeleccionada->usos << endl;
+                            }
+                        }
+                    }
+                }
+                
+                estadisticasHeroes[objetivoHeroe]->saludActual -= danoOrco;
+                cout << orcoActual->nombre << " atacó a " << heroeObjetivo->nombre << " causando " << danoOrco << " de daño." << endl;
+                cout << "Salud de " << heroeObjetivo->nombre << ": " << estadisticasHeroes[objetivoHeroe]->saludActual << endl;
+                
+                if (estadisticasHeroes[objetivoHeroe]->saludActual <= 0) {
+                    cout << "¡" << heroeObjetivo->nombre << " ha muerto!" << endl;
+                    estadisticasHeroes[objetivoHeroe]->puedeActuar = false;
+                }
+            }
+        }
+        
+        // Contar héroes vivos
+        int heroesVivosActuales = 0;
+        for (int i = 0; i < numHeroesVivos; i++) {
+            if (estadisticasHeroes[i]->saludActual > 0) {
+                heroesVivosActuales++;
+            }
+        }
+        numHeroesVivos = heroesVivosActuales;
+        
+        if (numHeroesVivos == 0) {
+            cout << "\n¡DERROTA! ¡Todos los héroes han muerto!" << endl;
+            cout << "Los orcos han ganado. ¡FIN DEL JUEGO!" << endl;
+            combateActivo = false;
+            
+            // Limpiar memoria y salir del programa
+            for (int i = 0; i < equipoHeroes.numPjs; i++) {
+                if (estadisticasHeroes[i]) delete estadisticasHeroes[i];
+            }
+            for (int i = 0; i < salaActual->equipoOrcos.numMiembros; i++) {
+                if (estadisticasOrcos[i]) {
+                    delete estadisticasOrcos[i]->personajeRef;
+                    delete estadisticasOrcos[i];
+                }
+            }
+            exit(0);
+        }
+        
+        turno++;
+    }
+    
+    // Si los héroes ganaron, limpiar orcos de la sala
+    if (numOrcosVivos == 0) {
+        salaActual->equipoOrcos.numMiembros = 0;
+        cout << "La sala ha sido liberada de orcos." << endl;
+        
+        // Aplicar recuperación de fortaleza para próximas rondas sin combate
+        cout << "Los héroes recuperarán fortaleza gradualmente en las próximas rondas sin combate." << endl;
+        for (int i = 0; i < numHeroesVivos; i++) {
+            estadisticasHeroes[i]->rondasSinCombate = 0; // Reiniciar contador
+        }
+    }
+    
+    for (int i = 0; i < equipoHeroes.numPjs; i++) {
+        if (estadisticasHeroes[i]) delete estadisticasHeroes[i];
+    }
+    for (int i = 0; i < salaActual->equipoOrcos.numMiembros; i++) {
+        if (estadisticasOrcos[i]) {
+            delete estadisticasOrcos[i]->personajeRef;
+            delete estadisticasOrcos[i];
+        }
+    }
+    
+    cout << "\n=== FIN DEL COMBATE ===" << endl;
+}
+
+//Menu de Juego
 void menuJuego(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, listaEquipos& listaEquipos, listaImplementos& listaImplementos, listaSalas& listaSalas, equipo*& equipoSeleccionado) {
     cout << "Seleccione su equipo" << endl;
     elegirEquipo(listaEquipos, listaPersonajes, equipoSeleccionado);
+    asignarImplementosAEquipo(*equipoSeleccionado, listaImplementos);
     cout << endl;
     auto extremos = listaSalas.buscarExtremosDeSalas();
     Sala* salaHeroes = extremos.first;
@@ -2536,7 +3277,7 @@ void menuJuego(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, l
         cout << "\n--- Menú del Juego (Ronda " << cantRondas + 1 << ") ---" << endl;
         cout << "1. Moverse entre salas" << endl;
         cout << "2. Mostrar mapa" << endl;
-        cout << "3. Usar implementos" << endl;
+        cout << "3. Usar Poder Magico" << endl;
         cout << "4. Terminar Juego." << endl;
         cout << "Selecciona una opción: ";
         op = leerOpcion();
@@ -2547,10 +3288,12 @@ void menuJuego(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, l
 
                 cout << "\n=== RONDA " << cantRondas << " ===\n";
                 
-                if (listaSalas.verificarEncuentroConOrcos(salaHeroes)) {
-                    cout << "Debes luchar o huir!\n";
+                // Verificar encuentro con orcos ANTES del movimiento
+                if (verificarEncuentroConOrcos(salaHeroes)) {
+                    cout << "¡Encuentro con orcos! Debes luchar o huir." << endl;
+                    armarBatalla(listaSalas, *equipoSeleccionado, salaHeroes, cantRondas);
                 }
-                
+
                 int turnosExtra = moverHeroes(listaSalas, *equipoSeleccionado, salaHeroes, listaEspecies, salaOrcos, cantRondas);
                 
                 cout << "Movimiento completado. Turnos extra generados: " << turnosExtra << endl;
@@ -2561,7 +3304,7 @@ void menuJuego(listaEspecies& listaEspecies, listaPersonajes& listaPersonajes, l
                 break;
             }
             case 3: {
-                cout << "Funcionalidad de usar implementos no implementada aún." << endl;
+                usarPoderMagico(listaEspecies, listaSalas, listaImplementos);
                 break;
             }
             case 4: {
